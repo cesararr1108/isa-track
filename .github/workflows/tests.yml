@@ -1,0 +1,43 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_DB: isa_track_test
+          POSTGRES_USER: isa
+          POSTGRES_PASSWORD: secret
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_pgsql, pdo_sqlite
+          coverage: none
+
+      - run: composer install --no-interaction --prefer-dist --no-progress
+      - run: cp .env.example .env && php artisan key:generate
+
+      - name: Estilo de código
+        run: ./vendor/bin/pint --test
+
+      - name: Pruebas (PostgreSQL)
+        run: php artisan test
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_DATABASE: isa_track_test
+          DB_USERNAME: isa
+          DB_PASSWORD: secret
