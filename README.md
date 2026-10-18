@@ -11,6 +11,8 @@ Stack: **PHP 8.3 · Laravel 13 · PostgreSQL 16** · Sanctum (tokens) · PHPUnit
 
 ---
 
+> **Prototipo navegable:** `docs/prototipo/index.html` es una maqueta en el navegador que aplica las mismas reglas del backend (despacho, app del conductor, rastreo público y caja). Ábrela directamente, sin instalar nada.
+
 ## 1. Arrancar en 5 minutos
 
 ```bash

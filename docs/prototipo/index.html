@@ -1,0 +1,754 @@
+<title>ISA Track Medellín</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: barra superior con 4 vistas (Despacho, Conductor, Rastreo, Caja); el despacho es lista + mapa del valle + ficha. */
+:root {
+  --bg: #f4f7f6;
+  --surface: #ffffff;
+  --sunken: #eaf0ee;
+  --line: #d8e2df;
+  --fg: #12201d;
+  --muted: #5d6f6b;
+  --accent: #0f766e;
+  --accent-ink: #ffffff;
+  --accent-soft: #d5ece8;
+  --danger: #dc2626;
+  --s-created: #64748b; --s-prepared: #6366f1; --s-assigned: #0ea5e9; --s-in_route: #2563eb;
+  --s-delivered: #16a34a; --s-incident: #d97706; --s-returned: #dc2626;
+  --map-bg: #e6eeeb; --map-river: #7fb3d5; --map-hill: #d3e0db;
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", sans-serif;
+  --body: "Figtree", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1513; --surface: #142120; --sunken: #0f1a18; --line: #24363a; --fg: #e6efec; --muted: #93a8a3;
+    --accent: #2dd4bf; --accent-ink: #062320; --accent-soft: #123a35; --danger: #f87171;
+    --map-bg: #102020; --map-river: #2c5d7c; --map-hill: #16302c; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1513; --surface: #142120; --sunken: #0f1a18; --line: #24363a; --fg: #e6efec; --muted: #93a8a3;
+  --accent: #2dd4bf; --accent-ink: #062320; --accent-soft: #123a35; --danger: #f87171;
+  --map-bg: #102020; --map-river: #2c5d7c; --map-hill: #16302c; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.45; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+h1, h2, h3 { font-family: var(--display); letter-spacing: -0.01em; text-wrap: balance; margin: 0; }
+.mono { font-family: var(--mono); font-size: .86em; letter-spacing: .02em; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.wrap { max-width: 1240px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* barra superior */
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line); }
+.top .wrap { display: flex; align-items: center; gap: 12px 20px; flex-wrap: wrap; padding-block: 10px; }
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand svg { flex: none; }
+.brand h1 { font-size: 1.2rem; }
+.brand small { display: block; color: var(--muted); font-size: .78rem; font-family: var(--body); letter-spacing: 0; }
+.views { display: flex; gap: 4px; background: var(--sunken); padding: 4px; border-radius: 999px; overflow-x: auto; max-width: 100%; }
+.views button { border: 0; background: none; padding: 7px 14px; border-radius: 999px; cursor: pointer; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.views button[aria-pressed="true"] { background: var(--surface); color: var(--fg); box-shadow: 0 1px 2px rgb(0 0 0 / .12); }
+.top .spacer { flex: 1; }
+.ghost { border: 1px solid var(--line); background: var(--surface); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: .85rem; }
+.ghost:hover { border-color: var(--accent); }
+
+main { padding-block: 20px 48px; }
+.intro { display: flex; gap: 10px 24px; align-items: baseline; flex-wrap: wrap; margin-bottom: 16px; }
+.intro h2 { font-size: 1.55rem; }
+.intro p { margin: 0; color: var(--muted); max-width: 70ch; }
+
+/* píldoras de estado */
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px 2px 8px; border-radius: 999px; font-size: .78rem; font-weight: 600; white-space: nowrap;
+  background: color-mix(in srgb, var(--c) 14%, transparent); color: color-mix(in srgb, var(--c) 78%, var(--fg)); }
+.pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--c); }
+.cod { font-size: .74rem; font-weight: 700; color: var(--s-incident); border: 1px solid color-mix(in srgb, var(--s-incident) 45%, transparent); border-radius: 6px; padding: 0 6px; white-space: nowrap; }
+
+/* botones */
+.btn { border: 0; background: var(--accent); color: var(--accent-ink); padding: 9px 16px; border-radius: 8px; font-weight: 700; cursor: pointer; }
+.btn:hover { filter: brightness(1.06); }
+.btn.secondary { background: var(--sunken); color: var(--fg); border: 1px solid var(--line); }
+.btn.warn { background: var(--s-incident); color: #fff; }
+.btn.danger { background: var(--danger); color: #fff; }
+.btn.big { width: 100%; padding: 16px; font-size: 1.05rem; border-radius: 12px; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+
+/* despacho */
+.kpis { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.kpi { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 12px 6px 10px; cursor: pointer; display: flex; gap: 8px; align-items: center; font-size: .86rem; }
+.kpi b { font-variant-numeric: tabular-nums; }
+.kpi[aria-pressed="true"] { border-color: var(--fg); }
+.desk { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); min-width: 0; }
+.panel > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.panel > header h3 { font-size: 1rem; }
+.rows { list-style: none; margin: 0; padding: 0; }
+.rows li { border-bottom: 1px solid var(--line); }
+.rows li:last-child { border-bottom: 0; }
+.row { width: 100%; text-align: left; background: none; border: 0; padding: 11px 14px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; cursor: pointer; }
+.row:hover { background: var(--sunken); }
+.row[aria-current="true"] { background: var(--accent-soft); }
+.row .who { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .meta { color: var(--muted); font-size: .82rem; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.row .right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.side { display: grid; gap: 16px; min-width: 0; }
+.map svg { display: block; width: 100%; height: auto; }
+.map .legend { padding: 8px 14px 12px; display: flex; gap: 6px 12px; flex-wrap: wrap; font-size: .76rem; color: var(--muted); }
+.detail { padding: 14px; display: grid; gap: 14px; }
+.detail .head { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; align-items: start; }
+.detail .head h3 { font-size: 1.15rem; }
+dl.kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 14px; margin: 0; font-size: .9rem; }
+dl.kv dt { color: var(--muted); }
+dl.kv dd { margin: 0; overflow-wrap: anywhere; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.actions select { padding: 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); }
+.timeline { list-style: none; margin: 0; padding: 0; }
+.timeline li { position: relative; padding: 0 0 14px 22px; border-left: 2px solid var(--line); margin-left: 6px; font-size: .88rem; }
+.timeline li:last-child { border-left-color: transparent; padding-bottom: 0; }
+.timeline li::before { content: ""; position: absolute; left: -7px; top: 3px; width: 12px; height: 12px; border-radius: 50%; background: var(--c); border: 2px solid var(--surface); }
+.timeline strong { display: block; }
+.timeline small { color: var(--muted); }
+.section-label { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; margin: 0 0 6px; }
+.evidence { display: flex; gap: 10px; flex-wrap: wrap; }
+.evidence img { width: 120px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); background: #fff; }
+
+/* formularios */
+form.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px; padding: 14px; }
+form.grid .full { grid-column: 1 / -1; }
+label.f { display: grid; gap: 4px; font-size: .8rem; color: var(--muted); font-weight: 600; }
+label.f input, label.f select, label.f textarea { padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font-size: .95rem; color: var(--fg); font-weight: 400; min-width: 0; }
+details.new > summary { cursor: pointer; list-style: none; }
+details.new > summary::-webkit-details-marker { display: none; }
+
+/* conductor: teléfono */
+.driver-layout { display: grid; grid-template-columns: minmax(0, 390px) minmax(0, 1fr); gap: 24px; align-items: start; }
+.phone { background: var(--surface); border: 1px solid var(--line); border-radius: 28px; padding: 14px; box-shadow: 0 10px 30px rgb(0 0 0 / .08); min-height: 640px; display: flex; flex-direction: column; gap: 12px; }
+.phone .bar { display: flex; justify-content: space-between; align-items: center; font-size: .8rem; color: var(--muted); padding: 0 6px; }
+.phone h3 { font-size: 1.25rem; }
+.stop { border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: grid; gap: 6px; background: var(--surface); text-align: left; cursor: pointer; width: 100%; }
+.stop:hover { border-color: var(--accent); }
+.stop .addr { font-size: 1.05rem; font-weight: 700; }
+.stack { display: grid; gap: 10px; }
+.nav-links { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.nav-links a { text-align: center; padding: 12px; border-radius: 12px; border: 1px solid var(--line); color: var(--fg); text-decoration: none; font-weight: 600; }
+.back { background: none; border: 0; color: var(--accent); font-weight: 700; cursor: pointer; padding: 4px 0; text-align: left; }
+.sig { width: 100%; height: 150px; border: 1.5px dashed var(--line); border-radius: 12px; background: #fff; touch-action: none; display: block; }
+.photo-box { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.photo-box img { width: 88px; height: 66px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); }
+.pay-row { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.pay-row select, .pay-row input { padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); min-width: 0; }
+.pay-row button { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 1.2rem; padding: 4px 8px; }
+.sum { display: flex; justify-content: space-between; font-weight: 700; padding: 10px 12px; border-radius: 10px; background: var(--sunken); }
+.sum.ok { color: var(--s-delivered); }
+.sum.bad { color: var(--danger); }
+.guide { display: grid; gap: 12px; }
+.guide ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.guide .panel { padding: 16px; }
+
+/* rastreo público */
+.track-layout { display: grid; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); gap: 24px; align-items: start; }
+.tp { border-radius: 22px; overflow: hidden; border: 1px solid var(--line); background: var(--tp-bg); color: var(--tp-fg); box-shadow: 0 10px 30px rgb(0 0 0 / .08);
+  --tp-bg: #f8fafc; --tp-card: #fff; --tp-fg: #0f172a; --tp-muted: #64748b; --tp-line: #e2e8f0; }
+.tp header { background: var(--brand); color: #fff; padding: 16px; display: flex; gap: 10px; align-items: center; }
+.tp .logo { width: 34px; height: 34px; border-radius: 8px; background: #fff; color: var(--brand); display: grid; place-items: center; font-weight: 800; font-family: var(--display); }
+.tp main { padding: 14px; display: grid; gap: 12px; }
+.tp .card { background: var(--tp-card); border: 1px solid var(--tp-line); border-radius: 14px; padding: 16px; }
+.tp .code { color: var(--tp-muted); font-size: .8rem; }
+.tp .hello { font-size: 1.25rem; margin: 4px 0 8px; font-family: var(--display); }
+.tp .badge { display: inline-block; padding: 5px 12px; border-radius: 999px; background: var(--c); color: #fff; font-weight: 700; }
+.tp dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; margin: 0; font-size: .92rem; }
+.tp dt { color: var(--tp-muted); }
+.tp dd { margin: 0; }
+.tp .timeline li { border-left-color: var(--tp-line); }
+.tp .timeline li::before { border-color: var(--tp-card); }
+.tp .timeline small { color: var(--tp-muted); }
+.tp footer { text-align: center; color: var(--tp-muted); font-size: .78rem; padding: 4px 0 16px; }
+.msgs { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.msg { background: var(--sunken); border-radius: 12px 12px 12px 4px; padding: 10px 12px; font-size: .9rem; max-width: 46ch; }
+.msg small { display: block; color: var(--muted); font-size: .75rem; margin-top: 4px; }
+.color-pick { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: .85rem; color: var(--muted); }
+.color-pick button { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--line); cursor: pointer; }
+.color-pick button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--fg); }
+
+/* caja */
+.cash-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+table.t { width: 100%; border-collapse: collapse; font-size: .92rem; }
+table.t th, table.t td { padding: 9px 14px; border-bottom: 1px solid var(--line); text-align: left; }
+table.t td.r, table.t th.r { text-align: right; font-variant-numeric: tabular-nums; }
+table.t tfoot td { font-weight: 700; border-bottom: 0; }
+.expected { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 14px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.expected b { font-family: var(--display); font-size: 1.6rem; font-variant-numeric: tabular-nums; }
+.result { margin: 0 14px 14px; padding: 12px 14px; border-radius: 10px; font-weight: 600; }
+.result.balanced { background: color-mix(in srgb, var(--s-delivered) 15%, transparent); color: color-mix(in srgb, var(--s-delivered) 75%, var(--fg)); }
+.result.short { background: color-mix(in srgb, var(--danger) 13%, transparent); color: color-mix(in srgb, var(--danger) 80%, var(--fg)); }
+.result.over { background: color-mix(in srgb, var(--s-incident) 15%, transparent); color: color-mix(in srgb, var(--s-incident) 80%, var(--fg)); }
+.empty { padding: 22px 14px; color: var(--muted); text-align: center; }
+
+/* aviso tipo API */
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 20; max-width: min(560px, calc(100% - 32px));
+  background: var(--fg); color: var(--bg); padding: 12px 16px; border-radius: 12px; box-shadow: 0 8px 24px rgb(0 0 0 / .25); font-size: .9rem; }
+.toast.err { background: var(--danger); color: #fff; }
+.toast code { font-family: var(--mono); font-size: .8rem; opacity: .9; display: block; margin-bottom: 2px; }
+
+@media (max-width: 900px) {
+  .desk, .driver-layout, .track-layout, .cash-layout { grid-template-columns: minmax(0, 1fr); }
+  .phone { min-height: 0; }
+}
+@media (max-width: 520px) {
+  form.grid { grid-template-columns: minmax(0, 1fr); }
+  .brand small { display: none; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .toast { animation: rise .18s ease-out; }
+  @keyframes rise { from { transform: translate(-50%, 8px); opacity: 0; } }
+}
+</style>
+
+<div class="top">
+  <div class="wrap">
+    <div class="brand">
+      <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><rect width="30" height="30" rx="8" fill="var(--accent)"/><path d="M8 19.5c3-6 5.5-9 7-9s2.5 2 2.5 4-1.5 4-1.5 4 3.5-1 6-6" fill="none" stroke="var(--accent-ink)" stroke-width="2.4" stroke-linecap="round"/><circle cx="22.5" cy="11" r="2.2" fill="var(--accent-ink)"/></svg>
+      <div><h1>ISA Track</h1><small>Distribuidora El Poblado · prototipo v0.2</small></div>
+    </div>
+    <nav class="views" aria-label="Vistas">
+      <button data-view="desk">Despacho</button>
+      <button data-view="driver">Conductor</button>
+      <button data-view="track">Rastreo público</button>
+      <button data-view="cash">Caja</button>
+    </nav>
+    <div class="spacer"></div>
+    <button class="ghost" id="reset">Reiniciar demo</button>
+  </div>
+</div>
+<main class="wrap" id="app"></main>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+'use strict';
+/* =====================================================================
+   Reglas copiadas del backend (config/isa.php y el dominio en src/).
+   Este prototipo corre en el navegador; los datos son de ejemplo.
+   ===================================================================== */
+const TZ = 'America/Bogota';
+const TRANSITIONS = {
+  created: ['prepared', 'assigned', 'returned'],
+  prepared: ['assigned', 'returned'],
+  assigned: ['in_route', 'prepared'],
+  in_route: ['delivered', 'incident'],
+  incident: ['in_route', 'assigned', 'returned'],
+  delivered: [], returned: [],
+};
+const STATUS = {
+  created: 'Creado', prepared: 'Alistado', assigned: 'Asignado', in_route: 'En ruta',
+  delivered: 'Entregado', incident: 'Novedad', returned: 'Devuelto',
+};
+const REASONS = { wrong_address: 'Dirección errada', customer_absent: 'Cliente ausente', rejected: 'Rechazado', rescheduled: 'Reprogramado', other: 'Otro motivo' };
+const METHODS = { cash: 'Efectivo', nequi: 'Nequi', daviplata: 'Daviplata', card_terminal: 'Datáfono', bank_transfer: 'Transferencia' };
+const PROOF = { receiver_name: true, photo: true, signature: true, location: false };
+const TEMPLATES = {
+  created: 'Hola {nombre}, recibimos tu pedido {codigo}. Síguelo aquí: {link}',
+  in_route: 'Hola {nombre}, tu pedido {codigo} va en camino. Míralo en vivo: {link}',
+  delivered: '¡Listo {nombre}! Tu pedido {codigo} fue entregado. Detalle: {link}',
+  incident: 'Hola {nombre}, tuvimos una novedad con tu pedido {codigo}. Detalles: {link}',
+};
+const CARRIERS = [
+  { id: 'c1', name: 'Juan Pérez', type: 'Conductor propio', plate: 'ABC12D' },
+  { id: 'c2', name: 'Mensajería Express Antioquia', type: 'Transportadora externa', plate: null },
+];
+const DRIVER_ID = 'c1';
+const BRANDS = ['#1d4ed8', '#7c3aed', '#0f766e', '#be123c', '#c2410c'];
+
+const money = n => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n);
+const fmt = d => new Intl.DateTimeFormat('es-CO', { timeZone: TZ, day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }).format(d);
+const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date());
+const dayOf = d => new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(d);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const first = name => String(name).trim().split(/\s+/)[0];
+const carrier = id => CARRIERS.find(c => c.id === id);
+const minsAgo = m => new Date(Date.now() - m * 60000);
+
+function newCode() {
+  const A = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  let c = ''; for (let i = 0; i < 8; i++) c += A[Math.floor(Math.random() * A.length)];
+  return 'ISA-' + c;
+}
+
+/* ------------------------------ datos demo ------------------------------ */
+function seed() {
+  const mk = (code, name, phone, line, barrio, lat, lng, cod, pkgs, steps) => {
+    const o = {
+      id: code, code, ref: 'WEB-' + (1000 + Math.floor(Math.random() * 900)),
+      recipient: { name, phone }, address: { line, barrio, city: barrio === 'Envigado' ? 'Envigado' : 'Medellín', lat, lng },
+      packages: pkgs.map((p, i) => ({ code: `${code}-${i + 1}`, desc: p })), cod, status: 'created', carrierId: null,
+      history: [], delivery: null,
+    };
+    let t = steps.length * 25 + 30;
+    o.history.push({ status: 'created', at: minsAgo(t), by: 'Diego (despacho)' });
+    for (const [st, extra] of steps) {
+      t -= 25;
+      if (st === 'assigned') o.carrierId = extra.carrier;
+      o.status = st;
+      o.history.push({ status: st, at: minsAgo(t), by: extra.by, loc: extra.loc, reason: extra.reason, note: extra.note });
+    }
+    return o;
+  };
+  const a = (c = 'c1') => ['assigned', { carrier: c, by: 'Diego (despacho)' }];
+  const r = loc => ['in_route', { by: 'Juan (conductor)', loc }];
+  return {
+    orders: [
+      mk('ISA-7K2M9QXP', 'Laura Gómez', '+57 301 222 3344', 'Cra 43A # 1-50, apto 302', 'El Poblado', 6.2088, -75.5679, null, ['Caja mediana'], [a(), r([6.2150, -75.5700])]),
+      mk('ISA-H4TPW8RN', 'Carlos Restrepo', '+57 302 555 6677', 'Cl 10 # 32-15', 'Laureles', 6.2442, -75.5966, 85000, ['Caja', 'Sobre'], [a()]),
+      mk('ISA-Q9VD3LZE', 'María Ochoa', '+57 315 888 9900', 'Cra 70 # 44-20', 'Estadio', 6.2531, -75.5888, 120000, ['Bolsa de ropa'], [['prepared', { by: 'Diego (despacho)' }]]),
+      mk('ISA-M3XC6YBA', 'Andrés Mejía', '+57 318 444 1100', 'Cl 33 # 65-12', 'Belén', 6.2309, -75.5906, 60000, ['Caja pequeña'], [a(), r([6.2280, -75.5850]), ['incident', { by: 'Juan (conductor)', reason: 'customer_absent', note: 'Nadie abre, portería sin razón' }]]),
+      mk('ISA-B8NR2KQS', 'Paula Zapata', '+57 300 777 2211', 'Cra 43 # 38 Sur-35', 'Envigado', 6.1710, -75.5870, null, ['Repuesto ferretería'], []),
+      mk('ISA-W6FJ4HTU', 'Sergio Arango', '+57 311 909 3030', 'Cl 52 # 40-18', 'Boston', 6.2477, -75.5604, 45000, ['Medicamentos'], [a('c2')]),
+    ],
+    closings: [],
+    messages: [],
+    selected: 'ISA-H4TPW8RN',
+    filter: null,
+    view: 'desk',
+    brand: BRANDS[0],
+    trackCode: 'ISA-7K2M9QXP',
+    driver: { screen: 'list', orderId: null },
+    form: null,
+    cashCarrier: 'c1',
+    lastClosing: null,
+  };
+}
+let S = seed();
+S.messages.push({ to: '+57 301 222 3344', text: fill('in_route', S.orders[0]), at: minsAgo(25) });
+
+/* ------------------------------ dominio ------------------------------ */
+class BusinessError extends Error { constructor(code, msg) { super(msg); this.code = code; } }
+function fill(status, o) {
+  return TEMPLATES[status]?.replace('{nombre}', first(o.recipient.name)).replace('{codigo}', o.code).replace('{link}', `isatrack.co/rastreo/${o.code}`);
+}
+function notify(o) {
+  const text = fill(o.status, o);
+  if (text) S.messages.unshift({ to: o.recipient.phone, text, at: new Date() });
+}
+function changeStatus(o, to, { by, loc, note, reason } = {}) {
+  if (to === 'delivered') throw new BusinessError('delivery_requires_proof', 'Para marcar un pedido como entregado hay que registrar la entrega con su prueba.');
+  if (!TRANSITIONS[o.status].includes(to)) throw new BusinessError('invalid_status_transition', `No se puede pasar el pedido de "${o.status}" a "${to}".`);
+  if (['assigned', 'in_route'].includes(to) && !o.carrierId) throw new BusinessError('carrier_required', 'El pedido no tiene transportador asignado.');
+  if (to === 'incident' && !reason) throw new BusinessError('incident_reason_required', 'Una novedad debe indicar el motivo.');
+  o.status = to;
+  o.history.push({ status: to, at: new Date(), by, loc, note, reason });
+  notify(o);
+}
+function assignCarrier(o, carrierId, by) {
+  if (o.status === 'assigned') {
+    o.carrierId = carrierId;
+    o.history.push({ status: 'assigned', at: new Date(), by, note: 'Reasignado a ' + carrier(carrierId).name });
+    return;
+  }
+  if (!TRANSITIONS[o.status].includes('assigned')) throw new BusinessError('invalid_status_transition', `No se puede pasar el pedido de "${o.status}" a "assigned".`);
+  o.carrierId = carrierId;
+  changeStatus(o, 'assigned', { by });
+}
+function isClosed(carrierId, date) { return S.closings.some(c => c.carrierId === carrierId && c.date === date); }
+function deliver(o, f, by) {
+  if (!TRANSITIONS[o.status].includes('delivered')) throw new BusinessError('invalid_status_transition', `No se puede pasar el pedido de "${o.status}" a "delivered".`);
+  const payments = f.payments.filter(p => Number(p.amount) > 0).map(p => ({ method: p.method, amount: Math.round(Number(p.amount)), reference: p.reference || null }));
+  if (payments.length && isClosed(o.carrierId, today())) throw new BusinessError('cash_register_already_closed', `La caja del conductor para el ${today()} ya fue cerrada; no se pueden registrar más recaudos ese día.`);
+  const missing = Object.entries({ receiver_name: !f.receiver.trim(), photo: !f.photo, signature: !f.signature, location: !f.loc })
+    .filter(([k, miss]) => PROOF[k] && miss).map(([k]) => k);
+  if (missing.length) throw new BusinessError('delivery_proof_incomplete', 'Falta información en la prueba de entrega: ' + missing.join(', ') + '.');
+  const expected = o.cod || 0, got = payments.reduce((s, p) => s + p.amount, 0);
+  if (expected !== got) throw new BusinessError('collection_amount_mismatch', `El pedido debe recaudar ${money(expected)} y se registraron ${money(got)}.`);
+  const at = new Date();
+  o.delivery = { receiver: f.receiver.trim(), document: f.document.trim() || null, photo: f.photo, signature: f.signature, loc: f.loc, payments, at };
+  o.status = 'delivered';
+  o.history.push({ status: 'delivered', at, by, loc: f.loc });
+  notify(o);
+}
+function summaryFor(carrierId, date) {
+  const byMethod = {}; let orders = 0;
+  for (const o of S.orders) {
+    if (o.carrierId !== carrierId || !o.delivery || dayOf(o.delivery.at) !== date || !o.delivery.payments.length) continue;
+    orders++;
+    for (const p of o.delivery.payments) byMethod[p.method] = (byMethod[p.method] || 0) + p.amount;
+  }
+  return { byMethod, orders, total: Object.values(byMethod).reduce((a, b) => a + b, 0), cash: byMethod.cash || 0 };
+}
+function closeCash(carrierId, cashReceived, notes) {
+  const date = today();
+  if (isClosed(carrierId, date)) throw new BusinessError('cash_already_closed', `La caja de este conductor para el ${date} ya está cerrada.`);
+  if (!Number.isInteger(cashReceived) || cashReceived < 0) throw new BusinessError('validation', 'Escribe el efectivo recibido en pesos, sin puntos ni decimales.');
+  const expected = summaryFor(carrierId, date);
+  const diff = cashReceived - expected.cash;
+  if (diff !== 0 && !notes.trim()) throw new BusinessError('difference_requires_note', `Hay una diferencia de ${money(diff)}; escribe una nota explicándola.`);
+  const c = { carrierId, date, expected, cashReceived, diff, result: diff === 0 ? 'balanced' : diff < 0 ? 'short' : 'over', notes: notes.trim() || null, at: new Date() };
+  S.closings.push(c);
+  return c;
+}
+
+/* ------------------------------ interfaz ------------------------------ */
+const $app = document.getElementById('app');
+const pill = st => `<span class="pill" style="--c: var(--s-${st})">${STATUS[st]}</span>`;
+let toastTimer;
+function toast(text, err = false, code = null) {
+  const t = document.getElementById('toast');
+  t.className = 'toast' + (err ? ' err' : '');
+  t.innerHTML = (code ? `<code>422 · ${esc(code)}</code>` : '') + esc(text);
+  t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => (t.hidden = true), err ? 5200 : 2600);
+}
+function attempt(fn, okMsg) {
+  try { fn(); if (okMsg) toast(okMsg); render(); return true; }
+  catch (e) { if (e instanceof BusinessError) { toast(e.message, true, e.code); return false; } throw e; }
+}
+
+function render() {
+  document.querySelectorAll('.views button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === S.view)));
+  ({ desk: renderDesk, driver: renderDriver, track: renderTrack, cash: renderCash })[S.view]();
+}
+
+/* ---------- despacho ---------- */
+function mapSvg(highlight) {
+  const W = 520, H = 360, la0 = 6.16, la1 = 6.29, lo0 = -75.615, lo1 = -75.545;
+  const x = lng => ((lng - lo0) / (lo1 - lo0)) * W, y = lat => H - ((lat - la0) / (la1 - la0)) * H;
+  const river = [[6.165, -75.600], [6.19, -75.588], [6.215, -75.579], [6.24, -75.574], [6.265, -75.569], [6.29, -75.562]];
+  const riverPath = river.map(([la, lo], i) => (i ? 'L' : 'M') + x(lo).toFixed(1) + ' ' + y(la).toFixed(1)).join(' ');
+  const pts = S.orders.map(o => {
+    const sel = o.id === highlight;
+    return `<g class="pin" data-id="${o.id}" style="cursor:pointer" tabindex="0" role="button" aria-label="${esc(o.recipient.name)}, ${STATUS[o.status]}">
+      <circle cx="${x(o.address.lng)}" cy="${y(o.address.lat)}" r="${sel ? 11 : 8}" fill="var(--s-${o.status})" stroke="var(--surface)" stroke-width="3"/>
+      <text x="${x(o.address.lng) + 13}" y="${y(o.address.lat) + 4}" font-size="12" font-weight="${sel ? 700 : 500}" fill="var(--fg)" font-family="Figtree, sans-serif">${esc(o.address.barrio)}</text></g>`;
+  }).join('');
+  const driverPos = S.orders.filter(o => o.status === 'in_route' && o.carrierId === DRIVER_ID).map(o => o.history.filter(h => h.loc).at(-1)?.loc).filter(Boolean)[0];
+  const truck = driverPos ? `<g><rect x="${x(driverPos[1]) - 9}" y="${y(driverPos[0]) - 9}" width="18" height="18" rx="5" fill="var(--fg)"/><text x="${x(driverPos[1])}" y="${y(driverPos[0]) + 4}" text-anchor="middle" font-size="10" font-weight="700" fill="var(--bg)" font-family="Figtree, sans-serif">JP</text></g>` : '';
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Esquema del valle de Aburrá con los pedidos del día">
+    <rect width="${W}" height="${H}" fill="var(--map-bg)"/>
+    <path d="M0 0 L0 ${H} L60 ${H} C 90 250, 70 120, 110 0 Z" fill="var(--map-hill)"/>
+    <path d="M${W} 0 L${W} ${H} L470 ${H} C 450 240, 480 120, 455 0 Z" fill="var(--map-hill)"/>
+    <path d="${riverPath}" fill="none" stroke="var(--map-river)" stroke-width="6" stroke-linecap="round"/>
+    <text x="${x(-75.5745) + 8}" y="${y(6.236)}" font-size="10" fill="var(--muted)" font-family="Figtree, sans-serif" transform="rotate(-72 ${x(-75.5745) + 8} ${y(6.236)})">Río Medellín</text>
+    ${pts}${truck}
+    <text x="10" y="${H - 10}" font-size="10" fill="var(--muted)" font-family="Figtree, sans-serif">Esquema del valle · en producción: Leaflet + OpenStreetMap</text>
+  </svg>`;
+}
+function renderDesk() {
+  const counts = Object.fromEntries(Object.keys(STATUS).map(k => [k, S.orders.filter(o => o.status === k).length]));
+  const list = S.orders.filter(o => !S.filter || o.status === S.filter);
+  const o = S.orders.find(x => x.id === S.selected) || list[0];
+  $app.innerHTML = `
+  <div class="intro"><h2>Panel del despachador</h2><p>Pedidos del día en Medellín. Selecciona uno para ver su historial, asignarlo o moverlo de estado; las reglas son las mismas del backend.</p></div>
+  <div class="kpis" role="group" aria-label="Filtrar por estado">
+    <button class="kpi" data-filter="" aria-pressed="${!S.filter}">Todos <b>${S.orders.length}</b></button>
+    ${Object.keys(STATUS).filter(k => counts[k]).map(k => `<button class="kpi" data-filter="${k}" aria-pressed="${S.filter === k}">${pill(k)} <b>${counts[k]}</b></button>`).join('')}
+  </div>
+  <div class="desk">
+    <div class="panel">
+      <header><h3>Pedidos</h3><button class="btn" id="toggle-new">${S.form ? 'Cerrar' : '+ Nuevo pedido'}</button></header>
+      ${S.form ? newOrderForm() : ''}
+      <ul class="rows">${list.map(x => `<li><button class="row" data-id="${x.id}" aria-current="${o && x.id === o.id}">
+        <span><span class="who">${esc(x.recipient.name)}</span><span class="meta"><span class="mono">${x.code}</span>· ${esc(x.address.barrio)}${x.carrierId ? ' · ' + esc(first(carrier(x.carrierId).name)) : ''}</span></span>
+        <span class="right">${pill(x.status)}${x.cod ? `<span class="cod num">Cobrar ${money(x.cod)}</span>` : ''}</span></button></li>`).join('') || '<li class="empty">No hay pedidos en este estado.</li>'}</ul>
+    </div>
+    <div class="side">
+      <div class="panel map">${mapSvg(o?.id)}<div class="legend">${Object.keys(STATUS).map(k => `<span>${pill(k)}</span>`).join('')}</div></div>
+      ${o ? orderDetail(o) : ''}
+    </div>
+  </div>`;
+}
+function newOrderForm() {
+  return `<form class="grid" id="new-order">
+    <label class="f">Destinatario<input id="no-name" required value="Valentina Ríos"></label>
+    <label class="f">Celular (WhatsApp)<input id="no-phone" required value="+57 312 456 7890"></label>
+    <label class="f full">Dirección<input id="no-line" required value="Cra 80 # 34B-20, casa 2"></label>
+    <label class="f">Barrio<select id="no-barrio">${['Laureles', 'El Poblado', 'Belén', 'Estadio', 'Boston', 'Envigado'].map(b => `<option>${b}</option>`).join('')}</select></label>
+    <label class="f">Paquetes (uno por línea)<textarea id="no-pkgs" rows="2">Caja grande
+Sobre</textarea></label>
+    <label class="f">Valor a cobrar contra entrega (vacío = ya pagado)<input id="no-cod" inputmode="numeric" value="95000"></label>
+    <label class="f">Referencia de la tienda<input id="no-ref" value="SHOP-2041"></label>
+    <div class="full actions"><button class="btn" type="submit">Crear pedido</button><span class="muted">Se genera el código de rastreo y se avisa al cliente.</span></div>
+  </form>`;
+}
+const BARRIOS = { 'Laureles': [6.2455, -75.6010], 'El Poblado': [6.2010, -75.5650], 'Belén': [6.2250, -75.6000], 'Estadio': [6.2570, -75.5920], 'Boston': [6.2500, -75.5570], 'Envigado': [6.1760, -75.5820] };
+function orderDetail(o) {
+  const allowed = TRANSITIONS[o.status];
+  const canAssign = allowed.includes('assigned') || o.status === 'assigned';
+  const others = allowed.filter(t => !['assigned', 'delivered', 'in_route', 'incident'].includes(t));
+  const d = o.delivery;
+  return `<div class="panel"><div class="detail">
+    <div class="head"><div><p class="section-label">Pedido <span class="mono">${o.code}</span> · ${esc(o.ref)}</p><h3>${esc(o.recipient.name)}</h3></div>${pill(o.status)}</div>
+    <dl class="kv">
+      <dt>Dirección</dt><dd>${esc(o.address.line)}, ${esc(o.address.barrio)}, ${esc(o.address.city)}</dd>
+      <dt>Celular</dt><dd class="num">${esc(o.recipient.phone)}</dd>
+      <dt>Paquetes</dt><dd>${o.packages.map(p => `<span class="mono">${p.code}</span> ${esc(p.desc)}`).join('<br>')}</dd>
+      <dt>Cobro</dt><dd>${o.cod ? `<b class="num">${money(o.cod)}</b> contra entrega` : 'Ya pagado'}</dd>
+      <dt>Transportador</dt><dd>${o.carrierId ? esc(carrier(o.carrierId).name) + ' · ' + carrier(o.carrierId).type : '<span class="muted">Sin asignar</span>'}</dd>
+    </dl>
+    ${d ? `<div><p class="section-label">Prueba de entrega</p><dl class="kv"><dt>Recibió</dt><dd>${esc(d.receiver)}${d.document ? ' · CC ' + esc(d.document) : ''}</dd>
+      ${d.payments.length ? `<dt>Recaudo</dt><dd>${d.payments.map(p => `${METHODS[p.method]} <b class="num">${money(p.amount)}</b>${p.reference ? ' · ' + esc(p.reference) : ''}`).join('<br>')}</dd>` : ''}</dl>
+      <div class="evidence" style="margin-top:8px">${d.photo ? `<img src="${d.photo}" alt="Foto del paquete entregado">` : ''}${d.signature ? `<img src="${d.signature}" alt="Firma de quien recibió">` : ''}</div></div>` : ''}
+    <div class="actions">
+      ${canAssign ? `<select id="assign-to" aria-label="Transportador">${CARRIERS.map(c => `<option value="${c.id}" ${c.id === o.carrierId ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>
+        <button class="btn" data-act="assign">${o.status === 'assigned' ? 'Reasignar' : 'Asignar'}</button>` : ''}
+      ${others.map(t => `<button class="btn ${t === 'returned' ? 'danger' : 'secondary'}" data-act="status" data-to="${t}">${t === 'prepared' ? (o.status === 'assigned' ? 'Volver a alistado' : 'Marcar alistado') : 'Marcar ' + STATUS[t].toLowerCase()}</button>`).join('')}
+      ${o.status === 'in_route' ? `<button class="btn secondary" data-act="status" data-to="delivered" title="Prueba de la regla: solo el registro con prueba entrega">Marcar entregado</button>` : ''}
+      <button class="btn secondary" data-act="see-track">Ver rastreo</button>
+    </div>
+    <div><p class="section-label">Historial</p><ol class="timeline">${[...o.history].reverse().map(h => `<li style="--c: var(--s-${h.status})"><strong>${STATUS[h.status]}${h.reason ? ' · ' + REASONS[h.reason] : ''}</strong>${h.note ? esc(h.note) + '<br>' : ''}<small>${fmt(h.at)} · ${esc(h.by || 'Sistema')}${h.loc ? ' · GPS ' + h.loc[0].toFixed(4) + ', ' + h.loc[1].toFixed(4) : ''}</small></li>`).join('')}</ol></div>
+  </div></div>`;
+}
+
+/* ---------- conductor ---------- */
+function blankDeliverForm(o) {
+  return { orderId: o.id, receiver: '', document: '', photo: null, signature: null, loc: null, payments: o.cod ? [{ method: 'cash', amount: String(o.cod), reference: '' }] : [] };
+}
+let DF = null;
+function renderDriver() {
+  const mine = S.orders.filter(o => o.carrierId === DRIVER_ID && ['assigned', 'in_route', 'incident'].includes(o.status));
+  const done = S.orders.filter(o => o.carrierId === DRIVER_ID && o.status === 'delivered');
+  const sc = S.driver.screen, o = S.orders.find(x => x.id === S.driver.orderId);
+  let body = '';
+  if (sc === 'list' || !o) {
+    body = `<h3>Hola, Juan</h3><p class="muted" style="margin:0">${mine.length} entregas pendientes · ${done.length} entregadas hoy</p>
+      <div class="stack">${mine.map(x => `<button class="stop" data-open="${x.id}"><span style="display:flex;justify-content:space-between;gap:8px;align-items:center">${pill(x.status)}${x.cod ? `<span class="cod num">Cobrar ${money(x.cod)}</span>` : ''}</span>
+        <span class="addr">${esc(x.address.line)}</span><span class="muted">${esc(x.address.barrio)} · ${esc(x.recipient.name)} · ${x.packages.length} paq.</span></button>`).join('') || '<p class="empty">No tienes entregas pendientes. Asigna pedidos a Juan Pérez desde Despacho.</p>'}</div>`;
+  } else if (sc === 'order') {
+    const q = encodeURIComponent(`${o.address.lat},${o.address.lng}`);
+    body = `<button class="back" data-back>← Mis entregas</button>
+      <div>${pill(o.status)}</div><h3>${esc(o.address.line)}</h3>
+      <p class="muted" style="margin:0">${esc(o.address.barrio)}, ${esc(o.address.city)} · ${esc(o.recipient.name)} · <span class="num">${esc(o.recipient.phone)}</span></p>
+      ${o.cod ? `<div class="sum"><span>Cobrar al entregar</span><span class="num">${money(o.cod)}</span></div>` : '<div class="sum ok"><span>Pedido ya pagado</span><span>Sin cobro</span></div>'}
+      <div class="nav-links"><a href="https://www.google.com/maps/dir/?api=1&destination=${q}" target="_blank" rel="noopener">Google Maps</a><a href="https://waze.com/ul?ll=${q}&navigate=yes" target="_blank" rel="noopener">Waze</a></div>
+      <div class="stack" style="margin-top:auto">
+        ${TRANSITIONS[o.status].includes('in_route') ? `<button class="btn big" data-dact="route">Salir a ruta</button>` : ''}
+        ${o.status === 'in_route' ? `<button class="btn big" data-dact="deliver">Entregar</button><button class="btn big warn" data-dact="incident">Reportar novedad</button>` : ''}
+      </div>`;
+  } else if (sc === 'incident') {
+    body = `<button class="back" data-back-order>← Volver</button><h3>Novedad</h3><p class="muted" style="margin:0">${esc(o.address.line)}</p>
+      <div class="stack">${Object.entries(REASONS).map(([k, v]) => `<button class="btn big secondary" data-reason="${k}">${v}</button>`).join('')}</div>`;
+  } else if (sc === 'deliver') {
+    if (!DF || DF.orderId !== o.id) DF = blankDeliverForm(o);
+    const got = DF.payments.reduce((s, p) => s + (Math.round(Number(p.amount)) || 0), 0), exp = o.cod || 0;
+    body = `<button class="back" data-back-order>← Volver</button><h3>Registrar entrega</h3>
+      <label class="f">¿Quién recibe?<input id="d-receiver" value="${esc(DF.receiver)}" placeholder="Nombre completo" autocomplete="off"></label>
+      <label class="f">Documento (opcional)<input id="d-doc" inputmode="numeric" value="${esc(DF.document)}"></label>
+      <div><p class="section-label">Foto del paquete</p><div class="photo-box">
+        ${DF.photo ? `<img src="${DF.photo}" alt="Foto tomada">` : ''}
+        <label class="btn secondary" style="display:inline-block">${DF.photo ? 'Cambiar foto' : 'Subir foto'}<input id="d-photo" type="file" accept="image/*" hidden></label>
+        <button class="btn secondary" id="d-photo-demo" type="button">Usar foto de ejemplo</button></div></div>
+      <div><p class="section-label">Firma de quien recibe</p><canvas class="sig" id="d-sig" aria-label="Área de firma"></canvas>
+        <button class="back" id="d-sig-clear" type="button">Borrar firma</button></div>
+      <button class="btn secondary" id="d-gps" type="button">${DF.loc ? `GPS ✓ ${DF.loc[0].toFixed(4)}, ${DF.loc[1].toFixed(4)}` : 'Tomar ubicación GPS'}</button>
+      ${o.cod || DF.payments.length ? `<div class="stack"><p class="section-label" style="margin:0">Recaudo · debe sumar ${money(exp)}</p>
+        ${DF.payments.map((p, i) => `<div class="pay-row"><select data-pm="${i}" aria-label="Medio de pago">${Object.entries(METHODS).map(([k, v]) => `<option value="${k}" ${k === p.method ? 'selected' : ''}>${v}</option>`).join('')}</select>
+          <input data-pa="${i}" inputmode="numeric" value="${esc(p.amount)}" aria-label="Valor"><button data-pdel="${i}" aria-label="Quitar pago">×</button>
+          ${p.method !== 'cash' ? `<input data-pr="${i}" placeholder="N.º de aprobación" value="${esc(p.reference)}" style="grid-column:1/-1">` : ''}</div>`).join('')}
+        <button class="back" id="d-addpay" type="button">+ Agregar otro medio de pago</button>
+        <div class="sum ${got === exp ? 'ok' : 'bad'}" id="d-sum"><span>Recaudado</span><span class="num">${money(got)}</span></div></div>` : ''}
+      <button class="btn big" id="d-submit">Confirmar entrega</button>`;
+  }
+  $app.innerHTML = `
+  <div class="intro"><h2>App del conductor</h2><p>Así la vería Juan en su celular: botones grandes, una mano, al sol. Es una PWA en la siguiente fase; aquí ya aplica las reglas reales.</p></div>
+  <div class="driver-layout">
+    <div class="phone"><div class="bar"><span>Juan Pérez · ABC12D</span><span>${isClosed(DRIVER_ID, today()) ? 'Caja cerrada' : 'Caja abierta'}</span></div>${body}</div>
+    <div class="guide">
+      <div class="panel"><h3 style="margin-bottom:8px">Prueba esto</h3><ol>
+        <li>Abre <b>Laura Gómez</b> (en ruta, ya pagado) → <b>Entregar</b>. Confirma sin firma: el sistema dice qué falta.</li>
+        <li>Abre <b>Carlos Restrepo</b> → <b>Salir a ruta</b> → <b>Entregar</b>. Debe cobrar $85.000: cambia el valor a $80.000 y mira el rechazo.</li>
+        <li>Divide el pago: $50.000 en efectivo + $35.000 por Nequi con número de aprobación.</li>
+        <li>Ve a <b>Caja</b> y cuadra el día de Juan; luego intenta otra entrega con cobro.</li>
+      </ol></div>
+      <div class="panel"><p class="section-label">Qué exige la empresa (config/isa.php)</p>
+        <dl class="kv"><dt>Nombre de quien recibe</dt><dd>Obligatorio</dd><dt>Foto</dt><dd>Obligatoria</dd><dt>Firma</dt><dd>Obligatoria</dd><dt>GPS</dt><dd>Opcional</dd></dl></div>
+    </div>
+  </div>`;
+  if (sc === 'deliver') bindSignature();
+}
+function bindSignature() {
+  const cv = document.getElementById('d-sig'); if (!cv) return;
+  const ratio = window.devicePixelRatio || 1, r = cv.getBoundingClientRect();
+  cv.width = r.width * ratio; cv.height = r.height * ratio;
+  const ctx = cv.getContext('2d'); ctx.scale(ratio, ratio);
+  ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#111827';
+  if (DF.signature) { const img = new Image(); img.onload = () => ctx.drawImage(img, 0, 0, r.width, r.height); img.src = DF.signature; }
+  let drawing = false;
+  const pos = e => { const b = cv.getBoundingClientRect(); return [e.clientX - b.left, e.clientY - b.top]; };
+  cv.addEventListener('pointerdown', e => { drawing = true; cv.setPointerCapture(e.pointerId); ctx.beginPath(); ctx.moveTo(...pos(e)); });
+  cv.addEventListener('pointermove', e => { if (!drawing) return; ctx.lineTo(...pos(e)); ctx.stroke(); });
+  const end = () => { if (!drawing) return; drawing = false; DF.signature = cv.toDataURL('image/png'); };
+  cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
+}
+function demoPhoto() {
+  const c = document.createElement('canvas'); c.width = 320; c.height = 240; const g = c.getContext('2d');
+  g.fillStyle = '#cbd5d1'; g.fillRect(0, 0, 320, 240);
+  g.fillStyle = '#b07a45'; g.fillRect(80, 70, 160, 120); g.fillStyle = '#946535'; g.fillRect(80, 70, 160, 22);
+  g.fillStyle = '#f5f5f4'; g.fillRect(170, 120, 56, 44); g.fillStyle = '#111'; g.font = 'bold 10px monospace'; g.fillText('ISA', 182, 138);
+  for (let i = 0; i < 6; i++) g.fillRect(176 + i * 7, 146, 4, 12);
+  return c.toDataURL('image/jpeg', .85);
+}
+
+/* ---------- rastreo público ---------- */
+function renderTrack() {
+  const o = S.orders.find(x => x.code === S.trackCode) || S.orders[0];
+  const loc = o.status === 'in_route' ? o.history.filter(h => h.loc).at(-1)?.loc : null;
+  $app.innerHTML = `
+  <div class="intro"><h2>Rastreo público</h2><p>La página que abre el cliente final desde WhatsApp, sin login y con la marca de la empresa. No muestra teléfono ni dirección exacta.</p></div>
+  <div class="track-layout">
+    <div>
+      <div class="tp" style="--brand:${S.brand}">
+        <header><span class="logo">EP</span><strong>Distribuidora El Poblado</strong></header>
+        <main>
+          <section class="card"><div class="code mono">PEDIDO ${o.code}</div><p class="hello">Hola ${esc(first(o.recipient.name))}</p><span class="badge" style="--c: var(--s-${o.status})">${STATUS[o.status]}</span></section>
+          <section class="card"><dl>
+            <dt>Destino</dt><dd>${esc(o.address.barrio)}, ${esc(o.address.city)}</dd>
+            <dt>Paquetes</dt><dd>${o.packages.length}</dd>
+            ${o.status === 'in_route' && o.carrierId ? `<dt>Te lo lleva</dt><dd>${esc(first(carrier(o.carrierId).name))}</dd>` : ''}
+            ${o.delivery ? `<dt>Recibido por</dt><dd>${esc(first(o.delivery.receiver))}</dd>` : ''}
+            ${loc ? `<dt>Ubicación</dt><dd class="num">≈ ${loc[0].toFixed(3)}, ${loc[1].toFixed(3)} <span style="color:var(--tp-muted)">(aprox. 110 m)</span></dd>` : ''}
+          </dl></section>
+          <section class="card"><ol class="timeline">${[...o.history].reverse().map(h => `<li style="--c: var(--s-${h.status})"><strong>${STATUS[h.status]}</strong>${h.reason ? REASONS[h.reason] + '<br>' : ''}<small>${fmt(h.at)}</small></li>`).join('')}</ol></section>
+        </main>
+        <footer>Rastreo por ISA Track</footer>
+      </div>
+    </div>
+    <div class="stack" style="gap:16px">
+      <div class="panel" style="padding:14px;display:grid;gap:12px">
+        <label class="f">Pedido a rastrear<select id="t-code">${S.orders.map(x => `<option value="${x.code}" ${x.code === o.code ? 'selected' : ''}>${x.code} · ${esc(x.recipient.name)} · ${STATUS[x.status]}</option>`).join('')}</select></label>
+        <div class="color-pick" role="group" aria-label="Color de marca">Marca blanca:${BRANDS.map(c => `<button data-brand="${c}" style="background:${c}" aria-pressed="${c === S.brand}" aria-label="Color ${c}"></button>`).join('')}</div>
+      </div>
+      <div class="panel"><header><h3>Mensajes al cliente</h3><span class="muted" style="font-size:.8rem">Simulado · hoy van al log, luego WhatsApp</span></header>
+        <div style="padding:14px"><ul class="msgs">${S.messages.slice(0, 8).map(m => `<li class="msg">${esc(m.text)}<small class="num">${esc(m.to)} · ${fmt(m.at)}</small></li>`).join('') || '<li class="empty">Aún no hay mensajes.</li>'}</ul></div></div>
+    </div>
+  </div>`;
+}
+
+/* ---------- caja ---------- */
+function renderCash() {
+  const date = today(), cid = S.cashCarrier, sum = summaryFor(cid, date);
+  const closing = S.closings.find(c => c.carrierId === cid && c.date === date);
+  const shown = closing ? closing.expected : sum;
+  const label = { balanced: 'Cuadra exacto', short: 'Faltante', over: 'Sobrante' };
+  $app.innerHTML = `
+  <div class="intro"><h2>Cuadre de caja</h2><p>Al final del día cada conductor entrega el efectivo. Nequi, Daviplata y datáfono se reportan aparte porque no pasan por su mano.</p></div>
+  <div class="cash-layout">
+    <div class="panel">
+      <header><h3>Recaudo del ${date}</h3><select id="c-carrier" aria-label="Conductor" style="padding:6px;border-radius:8px;border:1px solid var(--line);background:var(--surface)">${CARRIERS.map(c => `<option value="${c.id}" ${c.id === cid ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></header>
+      ${shown.orders ? `<table class="t"><thead><tr><th>Medio de pago</th><th class="r">Valor</th></tr></thead><tbody>
+        ${Object.entries(shown.byMethod).map(([k, v]) => `<tr><td>${METHODS[k]}</td><td class="r">${money(v)}</td></tr>`).join('')}</tbody>
+        <tfoot><tr><td>Total recaudado · ${shown.orders} pedido${shown.orders === 1 ? '' : 's'}</td><td class="r">${money(shown.total)}</td></tr></tfoot></table>`
+        : `<p class="empty">Aún no hay entregas con cobro hoy para ${esc(carrier(cid).name)}. Registra una desde la app del conductor.</p>`}
+      <div class="expected"><span class="muted">Efectivo que debe entregar</span><b>${money(shown.cash)}</b></div>
+    </div>
+    <div class="panel">
+      <header><h3>${closing ? 'Caja cerrada' : 'Cerrar caja'}</h3>${closing ? `<span class="muted num">${fmt(closing.at)}</span>` : ''}</header>
+      ${closing ? `<div style="padding:14px"><dl class="kv"><dt>Esperado</dt><dd class="num">${money(closing.expected.cash)}</dd><dt>Entregó</dt><dd class="num">${money(closing.cashReceived)}</dd><dt>Diferencia</dt><dd class="num">${money(closing.diff)}</dd>${closing.notes ? `<dt>Nota</dt><dd>${esc(closing.notes)}</dd>` : ''}</dl></div>
+        <div class="result ${closing.result}">${label[closing.result]}. Desde ahora ${esc(first(carrier(cid).name))} no puede registrar más cobros hoy.</div>`
+      : `<form class="grid" id="close-form">
+        <label class="f full">Efectivo que entregó el conductor (pesos)<input id="c-received" inputmode="numeric" value="${shown.cash}"></label>
+        <label class="f full">Nota (obligatoria si no cuadra)<textarea id="c-notes" rows="2" placeholder="Ej.: faltan $5.000, se descuentan de la liquidación"></textarea></label>
+        <div class="full actions"><button class="btn" type="submit">Cerrar caja del día</button></div></form>`}
+    </div>
+  </div>`;
+}
+
+/* ------------------------------ eventos ------------------------------ */
+document.querySelector('.views').addEventListener('click', e => {
+  const b = e.target.closest('button[data-view]'); if (!b) return;
+  S.view = b.dataset.view; render(); window.scrollTo({ top: 0 });
+});
+document.getElementById('reset').addEventListener('click', () => { S = seed(); DF = null; render(); toast('Demo reiniciada con los datos de ejemplo.'); });
+
+$app.addEventListener('click', e => {
+  const t = e.target;
+  const pick = sel => t.closest(sel);
+  let el;
+  // despacho
+  if ((el = pick('[data-filter]'))) { S.filter = el.dataset.filter || null; return render(); }
+  if ((el = pick('.row[data-id]')) || (el = pick('.pin'))) { S.selected = el.dataset.id; return render(); }
+  if (pick('#toggle-new')) { S.form = !S.form; return render(); }
+  if ((el = pick('[data-act]'))) {
+    const o = S.orders.find(x => x.id === S.selected);
+    if (el.dataset.act === 'assign') return attempt(() => assignCarrier(o, document.getElementById('assign-to').value, 'Diego (despacho)'), 'Pedido asignado.');
+    if (el.dataset.act === 'status') return attempt(() => changeStatus(o, el.dataset.to, { by: 'Diego (despacho)' }), 'Estado actualizado.');
+    if (el.dataset.act === 'see-track') { S.trackCode = o.code; S.view = 'track'; return render(); }
+  }
+  // conductor
+  if ((el = pick('[data-open]'))) { S.driver = { screen: 'order', orderId: el.dataset.open }; return render(); }
+  if (pick('[data-back]')) { S.driver = { screen: 'list', orderId: null }; return render(); }
+  if (pick('[data-back-order]')) { S.driver.screen = 'order'; return render(); }
+  if ((el = pick('[data-dact]'))) {
+    const o = S.orders.find(x => x.id === S.driver.orderId);
+    if (el.dataset.dact === 'route') return attempt(() => changeStatus(o, 'in_route', { by: 'Juan (conductor)', loc: [o.address.lat + 0.006, o.address.lng - 0.004] }), 'Vas en ruta. El cliente recibió el link por WhatsApp.');
+    if (el.dataset.dact === 'deliver') { S.driver.screen = 'deliver'; return render(); }
+    if (el.dataset.dact === 'incident') { S.driver.screen = 'incident'; return render(); }
+  }
+  if ((el = pick('[data-reason]'))) {
+    const o = S.orders.find(x => x.id === S.driver.orderId);
+    if (attempt(() => changeStatus(o, 'incident', { by: 'Juan (conductor)', reason: el.dataset.reason }), 'Novedad registrada.')) { S.driver = { screen: 'list', orderId: null }; render(); }
+    return;
+  }
+  if (pick('#d-photo-demo')) { DF.photo = demoPhoto(); return render(); }
+  if (pick('#d-sig-clear')) { DF.signature = null; return render(); }
+  if (pick('#d-gps')) { const o = S.orders.find(x => x.id === DF.orderId); DF.loc = [o.address.lat + 0.0003, o.address.lng - 0.0002]; return render(); }
+  if (pick('#d-addpay')) { DF.payments.push({ method: 'nequi', amount: '', reference: '' }); return render(); }
+  if ((el = pick('[data-pdel]'))) { DF.payments.splice(Number(el.dataset.pdel), 1); return render(); }
+  if (pick('#d-submit')) {
+    const o = S.orders.find(x => x.id === DF.orderId);
+    if (attempt(() => deliver(o, DF, 'Juan (conductor)'), 'Entrega registrada. El cliente recibió la confirmación.')) { DF = null; S.driver = { screen: 'list', orderId: null }; render(); }
+    return;
+  }
+  // rastreo
+  if ((el = pick('[data-brand]'))) { S.brand = el.dataset.brand; return render(); }
+});
+
+$app.addEventListener('input', e => {
+  const t = e.target;
+  if (!DF) return;
+  if (t.id === 'd-receiver') DF.receiver = t.value;
+  else if (t.id === 'd-doc') DF.document = t.value;
+  else if (t.dataset.pa !== undefined) { DF.payments[t.dataset.pa].amount = t.value.replace(/[^\d]/g, ''); updateSum(); }
+  else if (t.dataset.pr !== undefined) DF.payments[t.dataset.pr].reference = t.value;
+});
+function updateSum() {
+  const o = S.orders.find(x => x.id === DF.orderId), got = DF.payments.reduce((s, p) => s + (Number(p.amount) || 0), 0), el = document.getElementById('d-sum');
+  if (el) { el.className = 'sum ' + (got === (o.cod || 0) ? 'ok' : 'bad'); el.lastElementChild.textContent = money(got); }
+}
+$app.addEventListener('change', e => {
+  const t = e.target;
+  if (t.id === 'd-photo' && t.files[0]) { const r = new FileReader(); r.onload = () => { DF.photo = r.result; render(); }; r.readAsDataURL(t.files[0]); }
+  else if (t.dataset.pm !== undefined) { DF.payments[t.dataset.pm].method = t.value; render(); }
+  else if (t.id === 't-code') { S.trackCode = t.value; render(); }
+  else if (t.id === 'c-carrier') { S.cashCarrier = t.value; render(); }
+});
+$app.addEventListener('submit', e => {
+  e.preventDefault();
+  if (e.target.id === 'new-order') {
+    const v = id => document.getElementById(id).value.trim();
+    const pk = v('no-pkgs').split('\n').map(s => s.trim()).filter(Boolean);
+    if (!v('no-name') || !v('no-line')) return toast('El nombre y la dirección son obligatorios.', true, 'validation');
+    if (!pk.length) return toast('El pedido debe tener al menos un paquete.', true, 'order_requires_packages');
+    if (!/^\+?[0-9 ]{7,20}$/.test(v('no-phone'))) return toast('El teléfono del destinatario no es válido.', true, 'invalid_argument');
+    const codRaw = v('no-cod').replace(/[^\d]/g, '');
+    const code = newCode(), [lat, lng] = BARRIOS[v('no-barrio')];
+    const o = { id: code, code, ref: v('no-ref') || 'MANUAL', recipient: { name: v('no-name'), phone: v('no-phone') },
+      address: { line: v('no-line'), barrio: v('no-barrio'), city: v('no-barrio') === 'Envigado' ? 'Envigado' : 'Medellín', lat, lng },
+      packages: pk.map((d, i) => ({ code: `${code}-${i + 1}`, desc: d })), cod: codRaw ? Number(codRaw) : null,
+      status: 'created', carrierId: null, history: [{ status: 'created', at: new Date(), by: 'Diego (despacho)' }], delivery: null };
+    S.orders.unshift(o); S.selected = o.id; S.form = false; S.filter = null; notify(o);
+    render(); toast(`Pedido ${code} creado. Se avisó a ${first(o.recipient.name)} por WhatsApp.`);
+  }
+  if (e.target.id === 'close-form') {
+    const raw = document.getElementById('c-received').value.replace(/[.\s$]/g, '');
+    attempt(() => closeCash(S.cashCarrier, raw === '' ? NaN : Number(raw), document.getElementById('c-notes').value), 'Caja cerrada.');
+  }
+});
+$app.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList?.contains('pin')) { e.preventDefault(); S.selected = e.target.dataset.id; render(); } });
+
+render();
+</script>
