@@ -8,8 +8,11 @@ use Illuminate\Support\Facades\DB;
 use Isa\Shared\Domain\ValueObject\CarrierId;
 use Isa\Shared\Domain\ValueObject\CompanyId;
 use Isa\Shared\Domain\ValueObject\GeoPoint;
+use Isa\Shared\Domain\ValueObject\Money;
 use Isa\Shared\Domain\ValueObject\UserId;
 use Isa\Shipping\Domain\Address;
+use Isa\Shipping\Domain\Delivery;
+use Isa\Shipping\Domain\DeliveryProof;
 use Isa\Shipping\Domain\IncidentReason;
 use Isa\Shipping\Domain\Order;
 use Isa\Shipping\Domain\OrderId;
@@ -17,6 +20,8 @@ use Isa\Shipping\Domain\OrderRepository;
 use Isa\Shipping\Domain\OrderStatus;
 use Isa\Shipping\Domain\Package;
 use Isa\Shipping\Domain\PackageId;
+use Isa\Shipping\Domain\Payment;
+use Isa\Shipping\Domain\PaymentMethod;
 use Isa\Shipping\Domain\Recipient;
 use Isa\Shipping\Domain\StatusChange;
 use Isa\Shipping\Domain\TrackingCode;
@@ -31,6 +36,7 @@ final class EloquentOrderRepository implements OrderRepository
     {
         DB::transaction(function () use ($order): void {
             $address = $order->address();
+            $delivery = $order->delivery();
 
             OrderModel::query()->updateOrCreate(['id' => $order->id()->value()], [
                 'company_id' => $order->companyId()->value(),
@@ -49,7 +55,27 @@ final class EloquentOrderRepository implements OrderRepository
                 'longitude' => $address->location?->longitude,
                 'promised_at' => $order->promisedAt(),
                 'created_at' => $order->createdAt(),
+                'cash_on_delivery' => $order->cashOnDelivery()?->amount,
+                'delivered_at' => $delivery?->deliveredAt,
+                'receiver_name' => $delivery?->proof->receiverName,
+                'receiver_document' => $delivery?->proof->receiverDocument,
+                'delivery_photo_path' => $delivery?->proof->photoPath,
+                'delivery_signature_path' => $delivery?->proof->signaturePath,
+                'delivery_latitude' => $delivery?->proof->location?->latitude,
+                'delivery_longitude' => $delivery?->proof->location?->longitude,
             ]);
+
+            foreach ($delivery?->payments ?? [] as $payment) {
+                PaymentModel::query()->firstOrCreate(['id' => $payment->id], [
+                    'order_id' => $order->id()->value(),
+                    'company_id' => $order->companyId()->value(),
+                    'carrier_id' => $order->carrierId()?->value(),
+                    'method' => $payment->method->value,
+                    'amount' => $payment->amount->amount,
+                    'reference' => $payment->reference,
+                    'collected_at' => $delivery->deliveredAt,
+                ]);
+            }
 
             foreach ($order->packages() as $package) {
                 PackageModel::query()->updateOrCreate(['id' => $package->id->value()], [
@@ -84,7 +110,7 @@ final class EloquentOrderRepository implements OrderRepository
     public function find(CompanyId $companyId, OrderId $id): ?Order
     {
         $row = OrderModel::query()
-            ->with(['packages', 'history'])
+            ->with(['packages', 'history', 'payments'])
             ->where('company_id', $companyId->value())
             ->find($id->value());
 
@@ -95,7 +121,7 @@ final class EloquentOrderRepository implements OrderRepository
     {
         $row = OrderModel::query()
             ->withoutGlobalScope('company')
-            ->with(['packages', 'history'])
+            ->with(['packages', 'history', 'payments'])
             ->where('tracking_code', $code->value())
             ->first();
 
@@ -141,6 +167,32 @@ final class EloquentOrderRepository implements OrderRepository
                 $h->note,
                 $h->incident_reason !== null ? IncidentReason::from($h->incident_reason) : null,
             ))->all(),
+            $row->cash_on_delivery !== null ? new Money($row->cash_on_delivery) : null,
+            $this->deliveryOf($row),
+        );
+    }
+
+    private function deliveryOf(OrderModel $row): ?Delivery
+    {
+        if ($row->delivered_at === null) {
+            return null;
+        }
+
+        return new Delivery(
+            new DeliveryProof(
+                $row->receiver_name,
+                $row->receiver_document,
+                $row->delivery_photo_path,
+                $row->delivery_signature_path,
+                GeoPoint::fromNullable($row->delivery_latitude, $row->delivery_longitude),
+            ),
+            $row->payments->map(fn (PaymentModel $p) => new Payment(
+                $p->id,
+                PaymentMethod::from($p->method),
+                new Money($p->amount),
+                $p->reference,
+            ))->all(),
+            $row->delivered_at,
         );
     }
 }

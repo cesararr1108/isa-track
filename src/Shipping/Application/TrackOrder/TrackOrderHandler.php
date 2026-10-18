@@ -54,6 +54,9 @@ final class TrackOrderHandler
             'packages_count' => count($order->packages()),
             'promised_at' => $order->promisedAt()?->format(DATE_ATOM),
             'carrier_name' => $carrierName !== null ? explode(' ', $carrierName)[0] : null,
+            'received_by' => $order->delivery()?->proof->receiverName !== null
+                ? explode(' ', trim($order->delivery()->proof->receiverName))[0]
+                : null,
             'approximate_location' => $location === null ? null : [
                 'latitude' => round($location->latitude, self::LOCATION_PRECISION),
                 'longitude' => round($location->longitude, self::LOCATION_PRECISION),

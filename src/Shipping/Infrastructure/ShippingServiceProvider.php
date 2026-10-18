@@ -5,20 +5,26 @@ declare(strict_types=1);
 namespace Isa\Shipping\Infrastructure;
 
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\ServiceProvider;
 use InvalidArgumentException;
 use Isa\Shipping\Application\NotifyCustomer\NotifyCustomerOnStatusChange;
 use Isa\Shipping\Application\Port\CarrierDirectory;
+use Isa\Shipping\Application\Port\CashRegisterStatus;
 use Isa\Shipping\Application\Port\CompanyBrandingProvider;
 use Isa\Shipping\Application\Port\CustomerNotifier;
+use Isa\Shipping\Application\Port\EvidenceStorage;
 use Isa\Shipping\Application\Port\OrderQueries;
+use Isa\Shipping\Domain\DeliveryProofRequirements;
 use Isa\Shipping\Domain\Event\OrderStatusChanged;
 use Isa\Shipping\Domain\OrderRepository;
 use Isa\Shipping\Domain\StatusTransitionPolicy;
 use Isa\Shipping\Domain\TrackingCodeGenerator;
 use Isa\Shipping\Domain\TransitionMap;
+use Isa\Shipping\Infrastructure\Adapter\CashModuleRegisterStatus;
 use Isa\Shipping\Infrastructure\Adapter\CompaniesBrandingProvider;
 use Isa\Shipping\Infrastructure\Adapter\FleetCarrierDirectory;
+use Isa\Shipping\Infrastructure\Adapter\LaravelEvidenceStorage;
 use Isa\Shipping\Infrastructure\Adapter\RandomTrackingCodeGenerator;
 use Isa\Shipping\Infrastructure\Notification\LogCustomerNotifier;
 use Isa\Shipping\Infrastructure\Persistence\EloquentOrderQueries;
@@ -43,6 +49,17 @@ final class ShippingServiceProvider extends ServiceProvider
         $this->app->bind(OrderQueries::class, EloquentOrderQueries::class);
         $this->app->bind(CarrierDirectory::class, FleetCarrierDirectory::class);
         $this->app->bind(CompanyBrandingProvider::class, CompaniesBrandingProvider::class);
+
+        $this->app->bind(CashRegisterStatus::class, CashModuleRegisterStatus::class);
+        $this->app->bind(EvidenceStorage::class, fn () => new LaravelEvidenceStorage(
+            Storage::disk(config('isa.delivery_proof.disk')),
+        ));
+        $this->app->bind(DeliveryProofRequirements::class, fn () => new DeliveryProofRequirements(
+            receiverName: (bool) config('isa.delivery_proof.require.receiver_name'),
+            photo: (bool) config('isa.delivery_proof.require.photo'),
+            signature: (bool) config('isa.delivery_proof.require.signature'),
+            location: (bool) config('isa.delivery_proof.require.location'),
+        ));
 
         $this->app->singleton(StatusTransitionPolicy::class, fn () => new TransitionMap(config('isa.shipping.transitions')));
 

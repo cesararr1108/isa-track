@@ -64,6 +64,9 @@
             @if ($tracking['promised_at'])
                 <dt>Entrega estimada</dt><dd>{{ $fmt($tracking['promised_at']) }}</dd>
             @endif
+            @if ($tracking['received_by'])
+                <dt>Recibido por</dt><dd>{{ $tracking['received_by'] }}</dd>
+            @endif
             @if ($tracking['carrier_name'])
                 <dt>Te lo lleva</dt><dd>{{ $tracking['carrier_name'] }}</dd>
             @endif

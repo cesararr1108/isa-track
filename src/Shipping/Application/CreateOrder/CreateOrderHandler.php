@@ -9,6 +9,7 @@ use Isa\Shared\Application\EventBus;
 use Isa\Shared\Application\TenantContext;
 use Isa\Shared\Domain\Clock;
 use Isa\Shared\Domain\ValueObject\GeoPoint;
+use Isa\Shared\Domain\ValueObject\Money;
 use Isa\Shared\Domain\ValueObject\UserId;
 use Isa\Shipping\Domain\Address;
 use Isa\Shipping\Domain\Order;
@@ -50,6 +51,7 @@ final class CreateOrderHandler
             $command->promisedAt !== null ? new DateTimeImmutable($command->promisedAt) : null,
             $this->clock->now(),
             $command->createdBy !== null ? UserId::fromString($command->createdBy) : null,
+            $command->cashOnDelivery !== null ? new Money($command->cashOnDelivery) : null,
         );
 
         $this->orders->save($order);

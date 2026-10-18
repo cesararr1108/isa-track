@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use Illuminate\Support\Facades\Route;
+use Isa\Cash\Infrastructure\Http\CashController;
 use Isa\Companies\Infrastructure\Http\CompanyController;
 use Isa\Fleet\Infrastructure\Http\CarrierController;
 use Isa\Shipping\Infrastructure\Http\OrderController;
@@ -30,4 +31,11 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     Route::get('/orders/{order}', [OrderController::class, 'show'])->middleware('permission:orders.view');
     Route::post('/orders/{order}/assign', [OrderController::class, 'assign'])->middleware('permission:orders.assign');
     Route::post('/orders/{order}/status', [OrderController::class, 'changeStatus'])->middleware('permission:orders.change_status');
+    Route::post('/orders/{order}/deliver', [OrderController::class, 'deliver'])->middleware('permission:orders.change_status');
+    Route::get('/orders/{order}/evidence/{kind}', [OrderController::class, 'evidence'])
+        ->whereIn('kind', ['photo', 'signature'])->middleware('permission:orders.view');
+
+    Route::get('/cash/summary', [CashController::class, 'summary'])->middleware('permission:cash.view');
+    Route::get('/cash/closings', [CashController::class, 'index'])->middleware('permission:cash.view');
+    Route::post('/cash/closings', [CashController::class, 'store'])->middleware('permission:cash.close');
 });

@@ -1,9 +1,11 @@
-# ISA Track: logística y rastreo de pedidos (prototipo v0.1)
+# ISA Track: logística y rastreo de pedidos (prototipo v0.2)
 
 Núcleo del SaaS de logística para empresas de Medellín: **multiempresa, roles,
 pedidos con varios paquetes, estados con historial, asignación de transportador,
-rastreo público con marca blanca y notificación al cliente** (por ahora en el log;
-WhatsApp va en la siguiente fase).
+prueba de entrega (foto, firma, quién recibe y GPS), recaudo contra entrega
+(efectivo, Nequi, Daviplata, datáfono), cuadre de caja diario, rastreo público
+con marca blanca y notificación al cliente** (por ahora en el log; WhatsApp va
+en la siguiente fase).
 
 Stack: **PHP 8.3 · Laravel 13 · PostgreSQL 16** · Sanctum (tokens) · PHPUnit.
 
@@ -70,6 +72,7 @@ src/                                  <- TU código (namespace Isa\)
 │   └── Infrastructure/               Implementaciones Laravel, multiempresa, roles, middlewares
 ├── Companies/                        Empresas (tenant) + marca blanca
 ├── Fleet/                            Transportadores: conductores propios o transportadoras
+├── Cash/                             Caja: resumen del recaudo diario y cuadre por conductor
 └── Shipping/                         Pedidos ← el corazón
     ├── Domain/                       Order (agregado), Package, StatusChange, OrderStatus,
     │                                 TrackingCode, Recipient, Address, eventos, excepciones
@@ -77,6 +80,7 @@ src/                                  <- TU código (namespace Isa\)
     │   ├── CreateOrder/              CreateOrderCommand (datos) + CreateOrderHandler (lógica)
     │   ├── AssignCarrier/
     │   ├── ChangeOrderStatus/
+    │   ├── DeliverOrder/             Entrega con prueba + pagos contra entrega
     │   ├── GetOrder/  ListOrders/  TrackOrder/
     │   ├── NotifyCustomer/           Reacciona al evento OrderStatusChanged
     │   └── Port/                     Interfaces que el caso de uso necesita del exterior
@@ -143,6 +147,10 @@ Lo único de Laravel que necesitas para este proyecto:
 - **Código de rastreo**: prefijo y longitud (`ISA_TRACKING_PREFIX`, `ISA_TRACKING_LENGTH`).
 - **Notificaciones**: canal (`ISA_NOTIFIER=log`) y plantilla del mensaje por estado.
 - **Ciudad por defecto**: `ISA_DEFAULT_CITY`.
+- **Prueba de entrega obligatoria**: nombre de quien recibe, foto, firma y GPS se activan o desactivan uno por uno (`ISA_PROOF_PHOTO=false`...).
+- **Dónde se guardan fotos y firmas**: `ISA_EVIDENCE_DISK=local` (en `storage/app/private`) o `s3`. Tamaño máximo: `ISA_EVIDENCE_MAX_KB`.
+- **Medios de pago** y sus etiquetas.
+- **Caja**: exigir nota cuando el efectivo entregado no cuadra (`cash.require_note_on_difference`).
 
 ---
 
@@ -160,7 +168,12 @@ Todas las privadas requieren `Authorization: Bearer <token>` y `Accept: applicat
 | POST | `/api/orders` | `orders.create` | Crear pedido con paquetes |
 | GET | `/api/orders/{id}` | `orders.view` | Detalle con historial |
 | POST | `/api/orders/{id}/assign` | `orders.assign` | `{carrier_id}` |
-| POST | `/api/orders/{id}/status` | `orders.change_status` | `{status, latitude?, longitude?, note?, incident_reason?}` |
+| POST | `/api/orders/{id}/status` | `orders.change_status` | `{status, latitude?, longitude?, note?, incident_reason?}` (no sirve para `delivered`) |
+| POST | `/api/orders/{id}/deliver` | `orders.change_status` | **multipart**: `receiver_name`, `receiver_document?`, `photo`, `signature`, `latitude?`, `longitude?`, `note?`, `payments[i][method\|amount\|reference]` |
+| GET | `/api/orders/{id}/evidence/{photo\|signature}` | `orders.view` | Descarga la foto o la firma |
+| GET | `/api/cash/summary?carrier_id=&date=` | `cash.view` | Recaudo del día por medio de pago (el conductor ve el suyo) |
+| GET | `/api/cash/closings?date=` | `cash.view` | Cierres de caja del día |
+| POST | `/api/cash/closings` | `cash.close` | `{carrier_id, date?, cash_received, notes?}` → cuadre del conductor |
 | GET | `/api/public/tracking/{codigo}` | público | Rastreo en JSON (sin datos personales) |
 | GET | `/rastreo/{codigo}` | público | Página de rastreo móvil con la marca de la empresa |
 
@@ -176,6 +189,17 @@ curl -s -X POST localhost:8000/api/orders \
        "recipient":{"name":"Pedro Ruiz","phone":"+57 310 000 1122"},
        "address":{"line":"Cl 50 # 40-10","neighborhood":"Boston","reference":"Apto 302"},
        "packages":[{"description":"Caja","weight_kg":1.2},{"description":"Sobre"}]}'
+```
+
+Registrar una entrega contra entrega (parte en efectivo, parte por Nequi):
+
+```bash
+curl -s -X POST localhost:8000/api/orders/$ID/deliver \
+  -H "Authorization: Bearer $TOKEN_CONDUCTOR" -H 'Accept: application/json' \
+  -F receiver_name="Laura Gómez" -F photo=@paquete.jpg -F signature=@firma.png \
+  -F latitude=6.2088 -F longitude=-75.5679 \
+  -F 'payments[0][method]=cash'  -F 'payments[0][amount]=80000' \
+  -F 'payments[1][method]=nequi' -F 'payments[1][amount]=40000' -F 'payments[1][reference]=M998877'
 ```
 
 Los errores de negocio responden `422` con un código estable, por ejemplo
@@ -201,7 +225,25 @@ Ningún caso de uso cambia.
 
 ---
 
-## 7. Decisiones del prototipo y siguientes pasos
+## 7. Entrega, recaudo y caja: cómo funciona
+
+**Entrega (`DeliverOrderHandler` + `Order::deliver()`)**
+1. Solo se puede marcar *entregado* registrando la entrega; `POST /status` con `delivered` se rechaza.
+2. La prueba debe cumplir los requisitos configurados; si falta algo responde `delivery_proof_incomplete` con la lista de lo que falta.
+3. Fotos y firma se guardan en `evidence/{empresa}/{pedido}/`. Si la entrega es rechazada se borran, para no dejar archivos huérfanos.
+4. El rastreo público muestra solo el primer nombre de quien recibió; la foto y la firma solo se ven con login.
+
+**Recaudo contra entrega**
+- Al crear el pedido se indica `cash_on_delivery` en pesos (entero; el dinero nunca va en float). Sin ese campo, el pedido ya está pago.
+- Los pagos de la entrega deben sumar **exactamente** ese valor; se permiten varios medios en una sola entrega. A un pedido ya pago no se le pueden registrar cobros.
+
+**Cuadre de caja (módulo `Cash`)**
+- `GET /cash/summary` suma lo recaudado por conductor y día, agrupado por medio de pago. El *efectivo esperado* es solo lo cobrado en `cash`; Nequi, Daviplata y datáfono se reportan aparte porque no se entregan en mano.
+- `POST /cash/closings` registra cuánto efectivo entregó el conductor y calcula la diferencia (`balanced`, `short` o `over`). Si no cuadra, exige una nota.
+- Hay un solo cierre por conductor y día, y queda guardada la foto de lo esperado en ese momento. Después del cierre ese conductor no puede registrar más cobros ese día (`cash_register_already_closed`).
+- Los módulos se hablan por puertos: Pedidos pregunta a Caja con `CashRegisterStatus`, y Caja lee los pagos de Pedidos con `CollectedPayments`. Ninguno llama directo a las clases del otro.
+
+## 8. Decisiones del prototipo y siguientes pasos
 
 - **Multiempresa** con columna `company_id`: doble barrera, con un filtro explícito en los repositorios y un *global scope* (`BelongsToCompany`). Más simple que `stancl/tenancy` para arrancar.
 - **IDs UUID v7** generados en el dominio (ordenables por tiempo; no exponen cuántos pedidos hay).
@@ -210,8 +252,8 @@ Ningún caso de uso cambia.
 - **Coordenadas en columnas decimales**; migrar a `geography(Point)` de PostGIS cuando lleguen zonas y tarifas.
 
 Pendiente para completar la "primera versión" del documento:
-1. Prueba de entrega: foto, firma, nombre de quien recibe y GPS (subida a S3/disco).
-2. Recaudo contra entrega (efectivo, Nequi, Daviplata, datáfono) y cuadre de caja.
+1. ~~Prueba de entrega~~ ✅ y ~~recaudo contra entrega con cuadre de caja~~ ✅ (v0.2).
+2. Novedades con foto y reporte de frecuencia por motivo.
 3. WhatsApp Business API + colas Redis.
 4. App del conductor (PWA) y panel del despachador (Filament o Inertia + Vue).
 5. Etiquetas con QR / código de barras por paquete.

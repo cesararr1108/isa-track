@@ -16,6 +16,8 @@ use Isa\Shipping\Application\ChangeOrderStatus\ChangeOrderStatusCommand;
 use Isa\Shipping\Application\ChangeOrderStatus\ChangeOrderStatusHandler;
 use Isa\Shipping\Application\CreateOrder\CreateOrderCommand;
 use Isa\Shipping\Application\CreateOrder\CreateOrderHandler;
+use Isa\Shipping\Application\DeliverOrder\DeliverOrderCommand;
+use Isa\Shipping\Application\DeliverOrder\DeliverOrderHandler;
 
 /**
  * Datos de demostración. Usa los mismos casos de uso que la API:
@@ -60,12 +62,14 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
+        // [nombre, teléfono, dirección, barrio, lat, lng, valor contra entrega]
         $orders = [
-            ['Laura Gómez', '+57 301 222 3344', 'Cra 43A # 1-50', 'El Poblado', 6.2088, -75.5679],
-            ['Carlos Restrepo', '+57 302 555 6677', 'Cl 10 # 32-15', 'Laureles', 6.2442, -75.5966],
-            ['María Ochoa', '+57 315 888 9900', 'Cra 70 # 44-20', 'Estadio', 6.2531, -75.5888],
+            ['Laura Gómez', '+57 301 222 3344', 'Cra 43A # 1-50', 'El Poblado', 6.2088, -75.5679, null],
+            ['Carlos Restrepo', '+57 302 555 6677', 'Cl 10 # 32-15', 'Laureles', 6.2442, -75.5966, 85000],
+            ['María Ochoa', '+57 315 888 9900', 'Cra 70 # 44-20', 'Estadio', 6.2531, -75.5888, 120000],
+            ['Andrés Mejía', '+57 318 444 1100', 'Cl 33 # 65-12', 'Belén', 6.2309, -75.5906, 60000],
         ];
-        foreach ($orders as $i => [$name, $phone, $line, $neighborhood, $lat, $lng]) {
+        foreach ($orders as $i => [$name, $phone, $line, $neighborhood, $lat, $lng, $cod]) {
             $order = app(CreateOrderHandler::class)(new CreateOrderCommand(
                 recipientName: $name, recipientPhone: $phone, recipientEmail: null,
                 addressLine: $line, city: 'Medellín', neighborhood: $neighborhood,
@@ -73,14 +77,29 @@ class DatabaseSeeder extends Seeder
                 packages: [['description' => 'Caja mediana', 'weight_kg' => 2.5]],
                 externalReference: 'WEB-100'.$i,
                 promisedAt: now()->addDay()->setTime(17, 0)->toIso8601String(),
+                cashOnDelivery: $cod,
             ));
 
-            if ($i < 2) {
+            if ($i !== 2) {
                 app(AssignCarrierHandler::class)(new AssignCarrierCommand($order->id()->value(), $driverCarrier->value()));
             }
-            if ($i === 0) {
+            if ($i === 0 || $i === 3) {
                 app(ChangeOrderStatusHandler::class)(new ChangeOrderStatusCommand(
                     orderId: $order->id()->value(), status: 'in_route', latitude: 6.2150, longitude: -75.5700,
+                ));
+            }
+            if ($i === 3) {
+                // Entrega contra entrega: parte en efectivo, parte por Nequi.
+                // El seeder no adjunta foto ni firma, así que relaja ese requisito.
+                config(['isa.delivery_proof.require.photo' => false, 'isa.delivery_proof.require.signature' => false]);
+                app(DeliverOrderHandler::class)(new DeliverOrderCommand(
+                    orderId: $order->id()->value(),
+                    receiverName: 'Andrés Mejía',
+                    latitude: $lat, longitude: $lng,
+                    payments: [
+                        ['method' => 'cash', 'amount' => 40000],
+                        ['method' => 'nequi', 'amount' => 20000, 'reference' => 'M123456'],
+                    ],
                 ));
             }
 

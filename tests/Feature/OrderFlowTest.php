@@ -4,25 +4,24 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
-use Isa\Companies\Application\CreateCompany\CreateCompanyCommand;
-use Isa\Companies\Application\CreateCompany\CreateCompanyHandler;
-use Isa\Fleet\Infrastructure\Persistence\CarrierModel;
-use Isa\Shared\Domain\ValueObject\CompanyId;
+use Illuminate\Support\Facades\Storage;
 use Isa\Shared\Infrastructure\Auth\PermissionChecker;
 use Isa\Shared\Infrastructure\Auth\Role;
 use Laravel\Sanctum\Sanctum;
+use Tests\Feature\Concerns\BuildsTenantData;
 use Tests\TestCase;
 
 /** Pruebas de punta a punta por HTTP (Laravel + base de datos). */
 final class OrderFlowTest extends TestCase
 {
-    use RefreshDatabase;
+    use BuildsTenantData, RefreshDatabase;
 
     public function test_dispatcher_creates_assigns_and_driver_delivers_order(): void
     {
+        Storage::fake('local');
         $company = $this->company('Tienda Uno');
         $carrierId = $this->carrier($company);
         $dispatcher = $this->user($company, Role::Dispatcher);
@@ -42,7 +41,11 @@ final class OrderFlowTest extends TestCase
         Sanctum::actingAs($driver);
         $this->postJson("/api/orders/{$order['id']}/status", ['status' => 'in_route', 'latitude' => 6.2442, 'longitude' => -75.5966])
             ->assertOk();
-        $this->postJson("/api/orders/{$order['id']}/status", ['status' => 'delivered'])
+        $this->postJson("/api/orders/{$order['id']}/deliver", [
+            'receiver_name' => 'Laura Gómez',
+            'photo' => UploadedFile::fake()->image('paquete.jpg'),
+            'signature' => UploadedFile::fake()->image('firma.png'),
+        ])
             ->assertOk()
             ->assertJsonPath('data.status', 'delivered')
             ->assertJsonCount(4, 'data.history');
@@ -52,6 +55,7 @@ final class OrderFlowTest extends TestCase
             ->assertJsonPath('data.status', 'delivered')
             ->assertJsonPath('data.company.name', 'Tienda Uno')
             ->assertJsonPath('data.recipient_first_name', 'Laura')
+            ->assertJsonPath('data.received_by', 'Laura')
             ->assertJsonMissingPath('data.recipient_phone');
 
         $this->get("/rastreo/{$order['tracking_code']}")->assertOk()->assertSee('Entregado');
@@ -63,7 +67,7 @@ final class OrderFlowTest extends TestCase
         Sanctum::actingAs($this->user($company, Role::Dispatcher));
         $id = $this->postJson('/api/orders', $this->orderPayload())->json('data.id');
 
-        $this->postJson("/api/orders/{$id}/status", ['status' => 'delivered'])
+        $this->postJson("/api/orders/{$id}/status", ['status' => 'in_route'])
             ->assertUnprocessable()
             ->assertJsonPath('error', 'invalid_status_transition');
     }
@@ -132,33 +136,5 @@ final class OrderFlowTest extends TestCase
             ->json('token');
 
         $this->withToken($token)->getJson('/api/auth/me')->assertJsonPath('user.role', 'dispatcher');
-    }
-
-    private function company(string $name): CompanyId
-    {
-        return app(CreateCompanyHandler::class)(new CreateCompanyCommand($name));
-    }
-
-    private function carrier(CompanyId $company): string
-    {
-        return CarrierModel::query()->create([
-            'company_id' => $company->value(), 'name' => 'Juan Pérez', 'type' => 'own_driver', 'active' => true,
-        ])->id;
-    }
-
-    private function user(CompanyId $company, Role $role, ?string $carrierId = null): User
-    {
-        return User::factory()->create(['company_id' => $company->value(), 'role' => $role, 'carrier_id' => $carrierId]);
-    }
-
-    /** @return array<string, mixed> */
-    private function orderPayload(): array
-    {
-        return [
-            'external_reference' => 'WEB-1001',
-            'recipient' => ['name' => 'Laura Gómez', 'phone' => '+57 300 123 4567'],
-            'address' => ['line' => 'Cra 43A # 1-50', 'neighborhood' => 'El Poblado', 'reference' => 'Portería'],
-            'packages' => [['description' => 'Caja', 'weight_kg' => 2], ['description' => 'Sobre']],
-        ];
     }
 }

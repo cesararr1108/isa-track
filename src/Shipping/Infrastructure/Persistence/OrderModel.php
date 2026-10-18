@@ -21,12 +21,21 @@ final class OrderModel extends Model
         'latitude' => 'float',
         'longitude' => 'float',
         'promised_at' => 'immutable_datetime',
+        'delivered_at' => 'immutable_datetime',
+        'cash_on_delivery' => 'integer',
+        'delivery_latitude' => 'float',
+        'delivery_longitude' => 'float',
         'created_at' => 'immutable_datetime',
     ];
 
     public function packages(): HasMany
     {
         return $this->hasMany(PackageModel::class, 'order_id')->orderBy('code');
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(PaymentModel::class, 'order_id')->orderBy('id');
     }
 
     public function history(): HasMany

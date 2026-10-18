@@ -8,10 +8,16 @@ use DateTimeImmutable;
 use Isa\Shared\Domain\ValueObject\CarrierId;
 use Isa\Shared\Domain\ValueObject\CompanyId;
 use Isa\Shared\Domain\ValueObject\GeoPoint;
+use Isa\Shared\Domain\ValueObject\Money;
 use Isa\Shipping\Domain\Address;
+use Isa\Shipping\Domain\DeliveryProof;
+use Isa\Shipping\Domain\DeliveryProofRequirements;
 use Isa\Shipping\Domain\Event\OrderCreated;
 use Isa\Shipping\Domain\Event\OrderStatusChanged;
 use Isa\Shipping\Domain\Exception\CarrierRequired;
+use Isa\Shipping\Domain\Exception\CollectionAmountMismatch;
+use Isa\Shipping\Domain\Exception\DeliveryProofIncomplete;
+use Isa\Shipping\Domain\Exception\DeliveryRequiresProof;
 use Isa\Shipping\Domain\Exception\IncidentReasonRequired;
 use Isa\Shipping\Domain\Exception\InvalidStatusTransition;
 use Isa\Shipping\Domain\Exception\OrderRequiresPackages;
@@ -19,6 +25,8 @@ use Isa\Shipping\Domain\IncidentReason;
 use Isa\Shipping\Domain\Order;
 use Isa\Shipping\Domain\OrderId;
 use Isa\Shipping\Domain\OrderStatus;
+use Isa\Shipping\Domain\Payment;
+use Isa\Shipping\Domain\PaymentMethod;
 use Isa\Shipping\Domain\Recipient;
 use Isa\Shipping\Domain\TrackingCode;
 use Isa\Shipping\Domain\TransitionMap;
@@ -71,7 +79,7 @@ final class OrderTest extends TestCase
 
         $order->assignCarrier($carrier, $this->policy, $this->at('10:00'), null);
         $order->changeStatus(OrderStatus::InRoute, $this->policy, $this->at('11:00'), null, new GeoPoint(6.2, -75.5));
-        $order->changeStatus(OrderStatus::Delivered, $this->policy, $this->at('12:00'), null);
+        $order->deliver($this->proof(), [], $this->requirements(), $this->policy, $this->at('12:00'), null);
 
         self::assertSame(OrderStatus::Delivered, $order->status());
         self::assertTrue($order->isAssignedTo($carrier));
@@ -79,7 +87,57 @@ final class OrderTest extends TestCase
             ['created', 'assigned', 'in_route', 'delivered'],
             array_map(fn ($h) => $h->status->value, $order->history()),
         );
-        self::assertEqualsWithDelta(6.2, $order->lastKnownLocation()?->latitude, 0.0001);
+        self::assertEqualsWithDelta(6.25, $order->lastKnownLocation()?->latitude, 0.0001, 'La ubicación de la entrega queda como la última conocida');
+        self::assertSame('Laura', $order->delivery()?->proof->receiverName);
+    }
+
+    public function test_delivered_status_can_only_be_set_with_proof(): void
+    {
+        $order = $this->inRouteOrder();
+
+        $this->expectException(DeliveryRequiresProof::class);
+        $order->changeStatus(OrderStatus::Delivered, $this->policy, $this->at('12:00'), null);
+    }
+
+    public function test_delivery_proof_must_meet_requirements(): void
+    {
+        $order = $this->inRouteOrder();
+
+        try {
+            $order->deliver(new DeliveryProof('Laura'), [], $this->requirements(), $this->policy, $this->at('12:00'), null);
+            self::fail('Debió exigir foto y firma');
+        } catch (DeliveryProofIncomplete $e) {
+            self::assertSame(['photo', 'signature'], $e->missing);
+            self::assertSame(OrderStatus::InRoute, $order->status());
+        }
+    }
+
+    public function test_cash_on_delivery_accepts_split_payments_that_match(): void
+    {
+        $order = $this->inRouteOrder(cashOnDelivery: 100000);
+
+        $order->deliver($this->proof(), [
+            new Payment('p1', PaymentMethod::Cash, new Money(70000)),
+            new Payment('p2', PaymentMethod::Nequi, new Money(30000), 'M-1'),
+        ], $this->requirements(), $this->policy, $this->at('12:00'), null);
+
+        self::assertSame(100000, $order->delivery()?->collectedTotal()->amount);
+    }
+
+    public function test_cash_on_delivery_rejects_wrong_amount(): void
+    {
+        $order = $this->inRouteOrder(cashOnDelivery: 100000);
+
+        $this->expectException(CollectionAmountMismatch::class);
+        $order->deliver($this->proof(), [new Payment('p1', PaymentMethod::Cash, new Money(90000))], $this->requirements(), $this->policy, $this->at('12:00'), null);
+    }
+
+    public function test_prepaid_order_rejects_payments(): void
+    {
+        $order = $this->inRouteOrder();
+
+        $this->expectException(CollectionAmountMismatch::class);
+        $order->deliver($this->proof(), [new Payment('p1', PaymentMethod::Cash, new Money(5000))], $this->requirements(), $this->policy, $this->at('12:00'), null);
     }
 
     public function test_rejects_transitions_not_allowed_by_policy(): void
@@ -87,7 +145,7 @@ final class OrderTest extends TestCase
         $order = $this->newOrder();
 
         $this->expectException(InvalidStatusTransition::class);
-        $order->changeStatus(OrderStatus::Delivered, $this->policy, $this->at('10:00'), null);
+        $order->changeStatus(OrderStatus::InRoute, $this->policy, $this->at('10:00'), null);
     }
 
     public function test_cannot_assign_status_without_carrier(): void
@@ -130,9 +188,19 @@ final class OrderTest extends TestCase
         self::assertSame('Reasignado', $order->history()[2]->note);
     }
 
-    private function inRouteOrder(): Order
+    private function proof(): DeliveryProof
     {
-        $order = $this->newOrder();
+        return new DeliveryProof('Laura', null, 'photo.jpg', 'signature.png', new GeoPoint(6.25, -75.57));
+    }
+
+    private function requirements(): DeliveryProofRequirements
+    {
+        return new DeliveryProofRequirements(receiverName: true, photo: true, signature: true);
+    }
+
+    private function inRouteOrder(?int $cashOnDelivery = null): Order
+    {
+        $order = $this->newOrder(cashOnDelivery: $cashOnDelivery);
         $order->assignCarrier(CarrierId::generate(), $this->policy, $this->at('10:00'), null);
         $order->changeStatus(OrderStatus::InRoute, $this->policy, $this->at('11:00'), null);
 
@@ -140,7 +208,7 @@ final class OrderTest extends TestCase
     }
 
     /** @param list<array{description: string}>|null $packages */
-    private function newOrder(?array $packages = null): Order
+    private function newOrder(?array $packages = null, ?int $cashOnDelivery = null): Order
     {
         return Order::create(
             OrderId::generate(),
@@ -153,6 +221,7 @@ final class OrderTest extends TestCase
             null,
             $this->at('09:00'),
             null,
+            $cashOnDelivery !== null ? new Money($cashOnDelivery) : null,
         );
     }
 

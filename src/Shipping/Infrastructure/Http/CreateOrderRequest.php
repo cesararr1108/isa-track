@@ -20,6 +20,7 @@ final class CreateOrderRequest extends FormRequest
         return [
             'external_reference' => ['nullable', 'string', 'max:60'],
             'promised_at' => ['nullable', 'date'],
+            'cash_on_delivery' => ['nullable', 'integer', 'min:0', 'max:100000000'],
             'recipient.name' => ['required', 'string', 'max:150'],
             'recipient.phone' => ['required', 'string', 'max:20'],
             'recipient.email' => ['nullable', 'email'],
@@ -57,6 +58,7 @@ final class CreateOrderRequest extends FormRequest
             externalReference: $this->input('external_reference'),
             promisedAt: $this->input('promised_at'),
             createdBy: (string) $this->user()->getAuthIdentifier(),
+            cashOnDelivery: $this->filled('cash_on_delivery') ? (int) $this->input('cash_on_delivery') : null,
         );
     }
 }

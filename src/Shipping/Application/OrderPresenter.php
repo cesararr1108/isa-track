@@ -6,11 +6,37 @@ namespace Isa\Shipping\Application;
 
 use Isa\Shipping\Domain\Order;
 use Isa\Shipping\Domain\Package;
+use Isa\Shipping\Domain\Payment;
 use Isa\Shipping\Domain\StatusChange;
 
 /** Convierte el agregado en un arreglo plano para responder (vista interna/privada). */
 final class OrderPresenter
 {
+    /** @return array<string, mixed>|null */
+    private static function delivery(Order $order): ?array
+    {
+        $delivery = $order->delivery();
+        if ($delivery === null) {
+            return null;
+        }
+
+        return [
+            'delivered_at' => $delivery->deliveredAt->format(DATE_ATOM),
+            'receiver_name' => $delivery->proof->receiverName,
+            'receiver_document' => $delivery->proof->receiverDocument,
+            'has_photo' => $delivery->proof->photoPath !== null,
+            'has_signature' => $delivery->proof->signaturePath !== null,
+            'latitude' => $delivery->proof->location?->latitude,
+            'longitude' => $delivery->proof->location?->longitude,
+            'collected_total' => $delivery->collectedTotal()->amount,
+            'payments' => array_map(fn (Payment $p) => [
+                'method' => $p->method->value,
+                'amount' => $p->amount->amount,
+                'reference' => $p->reference,
+            ], $delivery->payments),
+        ];
+    }
+
     /** @return array<string, mixed> */
     public static function toArray(Order $order): array
     {
@@ -24,6 +50,8 @@ final class OrderPresenter
             'carrier_id' => $order->carrierId()?->value(),
             'promised_at' => $order->promisedAt()?->format(DATE_ATOM),
             'created_at' => $order->createdAt()->format(DATE_ATOM),
+            'cash_on_delivery' => $order->cashOnDelivery()?->amount,
+            'delivery' => self::delivery($order),
             'recipient' => [
                 'name' => $order->recipient()->name,
                 'phone' => $order->recipient()->phone,

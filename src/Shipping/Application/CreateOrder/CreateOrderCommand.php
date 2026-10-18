@@ -28,5 +28,7 @@ final class CreateOrderCommand
         public readonly ?string $externalReference = null,
         public readonly ?string $promisedAt = null,
         public readonly ?string $createdBy = null,
+        /** Valor a cobrar contra entrega en pesos (null = ya pagado). */
+        public readonly ?int $cashOnDelivery = null,
     ) {}
 }

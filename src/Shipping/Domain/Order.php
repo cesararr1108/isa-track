@@ -9,10 +9,13 @@ use Isa\Shared\Domain\AggregateRoot;
 use Isa\Shared\Domain\ValueObject\CarrierId;
 use Isa\Shared\Domain\ValueObject\CompanyId;
 use Isa\Shared\Domain\ValueObject\GeoPoint;
+use Isa\Shared\Domain\ValueObject\Money;
 use Isa\Shared\Domain\ValueObject\UserId;
 use Isa\Shipping\Domain\Event\OrderCreated;
 use Isa\Shipping\Domain\Event\OrderStatusChanged;
 use Isa\Shipping\Domain\Exception\CarrierRequired;
+use Isa\Shipping\Domain\Exception\CollectionAmountMismatch;
+use Isa\Shipping\Domain\Exception\DeliveryRequiresProof;
 use Isa\Shipping\Domain\Exception\IncidentReasonRequired;
 use Isa\Shipping\Domain\Exception\InvalidStatusTransition;
 use Isa\Shipping\Domain\Exception\OrderRequiresPackages;
@@ -45,6 +48,8 @@ final class Order extends AggregateRoot
         private readonly ?DateTimeImmutable $promisedAt,
         private readonly DateTimeImmutable $createdAt,
         private array $history,
+        private readonly ?Money $cashOnDelivery,
+        private ?Delivery $delivery,
     ) {}
 
     /**
@@ -61,6 +66,7 @@ final class Order extends AggregateRoot
         ?DateTimeImmutable $promisedAt,
         DateTimeImmutable $now,
         ?UserId $createdBy,
+        ?Money $cashOnDelivery = null,
     ): self {
         if ($packages === []) {
             throw new OrderRequiresPackages;
@@ -78,7 +84,7 @@ final class Order extends AggregateRoot
 
         $order = new self(
             $id, $companyId, $trackingCode, $externalReference, $recipient, $address,
-            $packageEntities, OrderStatus::Created, null, $promisedAt, $now, [],
+            $packageEntities, OrderStatus::Created, null, $promisedAt, $now, [], $cashOnDelivery, null,
         );
 
         $order->appendHistory(OrderStatus::Created, $now, $createdBy);
@@ -107,10 +113,12 @@ final class Order extends AggregateRoot
         ?DateTimeImmutable $promisedAt,
         DateTimeImmutable $createdAt,
         array $history,
+        ?Money $cashOnDelivery = null,
+        ?Delivery $delivery = null,
     ): self {
         return new self(
             $id, $companyId, $trackingCode, $externalReference, $recipient, $address,
-            $packages, $status, $carrierId, $promisedAt, $createdAt, $history,
+            $packages, $status, $carrierId, $promisedAt, $createdAt, $history, $cashOnDelivery, $delivery,
         );
     }
 
@@ -142,6 +150,9 @@ final class Order extends AggregateRoot
         ?string $note = null,
         ?IncidentReason $incidentReason = null,
     ): void {
+        if ($to === OrderStatus::Delivered) {
+            throw new DeliveryRequiresProof;
+        }
         $this->guardTransition($this->status, $to, $policy);
 
         if (in_array($to, self::STATUSES_REQUIRING_CARRIER, true) && $this->carrierId === null) {
@@ -152,6 +163,42 @@ final class Order extends AggregateRoot
         }
 
         $this->transitionTo($to, $at, $changedBy, $location, $note, $incidentReason);
+    }
+
+    /**
+     * Registra la entrega exitosa con su prueba y, si el pedido es contra
+     * entrega, los pagos recibidos (deben sumar exactamente el valor a cobrar).
+     *
+     * @param  list<Payment>  $payments
+     */
+    public function deliver(
+        DeliveryProof $proof,
+        array $payments,
+        DeliveryProofRequirements $requirements,
+        StatusTransitionPolicy $policy,
+        DateTimeImmutable $at,
+        ?UserId $deliveredBy,
+        ?string $note = null,
+    ): void {
+        $this->guardTransition($this->status, OrderStatus::Delivered, $policy);
+        if ($this->carrierId === null) {
+            throw new CarrierRequired;
+        }
+        $requirements->assertSatisfiedBy($proof);
+
+        $delivery = new Delivery($proof, array_values($payments), $at);
+        $expected = $this->cashOnDelivery ?? Money::zero();
+        if (! $delivery->collectedTotal()->equals($expected)) {
+            throw new CollectionAmountMismatch($expected->amount, $delivery->collectedTotal()->amount);
+        }
+
+        $this->delivery = $delivery;
+        $this->transitionTo(OrderStatus::Delivered, $at, $deliveredBy, $proof->location, $note);
+    }
+
+    public function isCashOnDelivery(): bool
+    {
+        return $this->cashOnDelivery !== null && ! $this->cashOnDelivery->isZero();
     }
 
     public function isAssignedTo(CarrierId $carrierId): bool
@@ -279,5 +326,15 @@ final class Order extends AggregateRoot
     public function history(): array
     {
         return $this->history;
+    }
+
+    public function cashOnDelivery(): ?Money
+    {
+        return $this->cashOnDelivery;
+    }
+
+    public function delivery(): ?Delivery
+    {
+        return $this->delivery;
     }
 }
