@@ -25,4 +25,22 @@ final class PermissionCheckerTest extends TestCase
         self::assertFalse($checker->allows(Role::Driver, 'orders.create'));
         self::assertFalse($checker->allows(Role::Viewer, 'orders.view'), 'Rol sin entrada en config = sin permisos');
     }
+
+    public function test_user_permissions_add_to_role_and_revoked_wins(): void
+    {
+        $checker = new PermissionChecker([
+            'superadmin' => ['*'],
+            'dispatcher' => ['orders.*', 'routes.*'],
+        ]);
+
+        self::assertTrue($checker->allows(Role::Dispatcher, 'reports.view', granted: ['reports.view']));
+        self::assertFalse($checker->allows(Role::Dispatcher, 'routes.manage', revoked: ['routes.manage']));
+        self::assertFalse($checker->allows(Role::Dispatcher, 'orders.create', granted: ['orders.create'], revoked: ['orders.*']));
+        self::assertTrue($checker->allows(Role::SuperAdmin, 'users.manage', revoked: ['*']), 'Al superadmin no se le quita nada');
+
+        self::assertSame(
+            ['orders.view', 'reports.view'],
+            $checker->effective(Role::Dispatcher, ['orders.view', 'routes.view', 'reports.view', 'cash.view'], ['reports.view'], ['routes.view']),
+        );
+    }
 }

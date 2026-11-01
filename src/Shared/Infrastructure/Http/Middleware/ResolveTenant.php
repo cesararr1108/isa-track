@@ -25,6 +25,10 @@ final class ResolveTenant
         $user = $request->user();
 
         if ($user !== null) {
+            if ($user->active === false) {
+                abort(403, 'Tu usuario está desactivado.');
+            }
+
             $companyId = $user->role === Role::SuperAdmin
                 ? $request->header('X-Company-Id')
                 : $user->company_id;

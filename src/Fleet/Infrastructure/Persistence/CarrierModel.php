@@ -16,5 +16,9 @@ final class CarrierModel extends Model
 
     protected $guarded = [];
 
-    protected $casts = ['active' => 'boolean'];
+    protected $casts = [
+        'active' => 'boolean',
+        'capacity_kg' => 'float',
+        'capacity_packages' => 'integer',
+    ];
 }

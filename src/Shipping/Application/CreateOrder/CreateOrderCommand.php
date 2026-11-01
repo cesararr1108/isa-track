@@ -30,5 +30,7 @@ final class CreateOrderCommand
         public readonly ?string $createdBy = null,
         /** Valor a cobrar contra entrega en pesos (null = ya pagado). */
         public readonly ?int $cashOnDelivery = null,
+        /** Tarifa del domicilio en pesos. null = la calcula la zona que cubre la dirección. */
+        public readonly ?int $deliveryFee = null,
     ) {}
 }

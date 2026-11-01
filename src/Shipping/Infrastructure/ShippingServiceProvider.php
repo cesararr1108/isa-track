@@ -13,6 +13,7 @@ use Isa\Shipping\Application\Port\CarrierDirectory;
 use Isa\Shipping\Application\Port\CashRegisterStatus;
 use Isa\Shipping\Application\Port\CompanyBrandingProvider;
 use Isa\Shipping\Application\Port\CustomerNotifier;
+use Isa\Shipping\Application\Port\DeliveryFeeQuoter;
 use Isa\Shipping\Application\Port\EvidenceStorage;
 use Isa\Shipping\Application\Port\OrderQueries;
 use Isa\Shipping\Domain\DeliveryProofRequirements;
@@ -26,6 +27,7 @@ use Isa\Shipping\Infrastructure\Adapter\CompaniesBrandingProvider;
 use Isa\Shipping\Infrastructure\Adapter\FleetCarrierDirectory;
 use Isa\Shipping\Infrastructure\Adapter\LaravelEvidenceStorage;
 use Isa\Shipping\Infrastructure\Adapter\RandomTrackingCodeGenerator;
+use Isa\Shipping\Infrastructure\Adapter\ZonesDeliveryFeeQuoter;
 use Isa\Shipping\Infrastructure\Notification\LogCustomerNotifier;
 use Isa\Shipping\Infrastructure\Persistence\EloquentOrderQueries;
 use Isa\Shipping\Infrastructure\Persistence\EloquentOrderRepository;
@@ -49,6 +51,7 @@ final class ShippingServiceProvider extends ServiceProvider
         $this->app->bind(OrderQueries::class, EloquentOrderQueries::class);
         $this->app->bind(CarrierDirectory::class, FleetCarrierDirectory::class);
         $this->app->bind(CompanyBrandingProvider::class, CompaniesBrandingProvider::class);
+        $this->app->bind(DeliveryFeeQuoter::class, ZonesDeliveryFeeQuoter::class);
 
         $this->app->bind(CashRegisterStatus::class, CashModuleRegisterStatus::class);
         $this->app->bind(EvidenceStorage::class, fn () => new LaravelEvidenceStorage(

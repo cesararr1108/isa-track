@@ -13,6 +13,8 @@ use Illuminate\Validation\ValidationException;
 /** Login por token (Sanctum), pensado para el panel SPA y la app del conductor. */
 final class AuthController
 {
+    public function __construct(private readonly UserPresenter $presenter) {}
+
     public function login(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -26,16 +28,19 @@ final class AuthController
         if ($user === null || ! Hash::check($data['password'], $user->password)) {
             throw ValidationException::withMessages(['email' => 'Credenciales incorrectas.']);
         }
+        if ($user->active === false) {
+            throw ValidationException::withMessages(['email' => 'Tu usuario está desactivado. Habla con el administrador.']);
+        }
 
         return new JsonResponse([
             'token' => $user->createToken($data['device_name'] ?? 'api')->plainTextToken,
-            'user' => $this->present($user),
+            'user' => $this->presenter->toArray($user),
         ]);
     }
 
     public function me(Request $request): JsonResponse
     {
-        return new JsonResponse(['user' => $this->present($request->user())]);
+        return new JsonResponse(['user' => $this->presenter->toArray($request->user())]);
     }
 
     public function logout(Request $request): JsonResponse
@@ -43,18 +48,5 @@ final class AuthController
         $request->user()->currentAccessToken()->delete();
 
         return new JsonResponse(status: 204);
-    }
-
-    /** @return array<string, mixed> */
-    private function present(User $user): array
-    {
-        return [
-            'id' => $user->id,
-            'name' => $user->name,
-            'email' => $user->email,
-            'role' => $user->role->value,
-            'company_id' => $user->company_id,
-            'carrier_id' => $user->carrier_id,
-        ];
     }
 }

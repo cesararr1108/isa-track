@@ -9,21 +9,23 @@ use Isa\Shared\Domain\AggregateRoot;
 use Isa\Shared\Domain\ValueObject\CarrierId;
 use Isa\Shared\Domain\ValueObject\CompanyId;
 
-/** Transportador al que se le asignan pedidos. */
+/**
+ * Transportador al que se le asignan pedidos: un mensajero propio o una
+ * transportadora externa. Guarda los datos del mensajero (cédula, teléfono),
+ * su vehículo (placa, tipo, capacidad) y su foto.
+ */
 final class Carrier extends AggregateRoot
 {
     private function __construct(
         private readonly CarrierId $id,
         private readonly CompanyId $companyId,
         private string $name,
-        private readonly CarrierType $type,
-        private ?string $phone,
-        private ?string $vehiclePlate,
+        private CarrierType $type,
+        private CarrierProfile $profile,
+        private ?string $photoPath,
         private bool $active,
     ) {
-        if (trim($name) === '') {
-            throw new InvalidArgumentException('El nombre del transportador es obligatorio.');
-        }
+        $this->guardName($name);
     }
 
     public static function register(
@@ -31,10 +33,9 @@ final class Carrier extends AggregateRoot
         CompanyId $companyId,
         string $name,
         CarrierType $type,
-        ?string $phone,
-        ?string $vehiclePlate,
+        CarrierProfile $profile = new CarrierProfile,
     ): self {
-        return new self($id, $companyId, $name, $type, $phone, $vehiclePlate, true);
+        return new self($id, $companyId, trim($name), $type, $profile, null, true);
     }
 
     public static function restore(
@@ -42,11 +43,28 @@ final class Carrier extends AggregateRoot
         CompanyId $companyId,
         string $name,
         CarrierType $type,
-        ?string $phone,
-        ?string $vehiclePlate,
+        CarrierProfile $profile,
+        ?string $photoPath,
         bool $active,
     ): self {
-        return new self($id, $companyId, $name, $type, $phone, $vehiclePlate, $active);
+        return new self($id, $companyId, $name, $type, $profile, $photoPath, $active);
+    }
+
+    public function update(string $name, CarrierType $type, CarrierProfile $profile): void
+    {
+        $this->guardName($name);
+        $this->name = trim($name);
+        $this->type = $type;
+        $this->profile = $profile;
+    }
+
+    /** Cambia la foto y devuelve la anterior (para borrarla del disco). */
+    public function changePhoto(string $path): ?string
+    {
+        $previous = $this->photoPath;
+        $this->photoPath = $path;
+
+        return $previous;
     }
 
     public function deactivate(): void
@@ -57,6 +75,19 @@ final class Carrier extends AggregateRoot
     public function activate(): void
     {
         $this->active = true;
+    }
+
+    /** ¿Puede llevar esta carga en un solo recorrido? */
+    public function canCarry(float $weightKg, int $packages): bool
+    {
+        return $this->profile->capacity->allows($weightKg, $packages);
+    }
+
+    private function guardName(string $name): void
+    {
+        if (trim($name) === '') {
+            throw new InvalidArgumentException('El nombre del transportador es obligatorio.');
+        }
     }
 
     public function id(): CarrierId
@@ -79,14 +110,24 @@ final class Carrier extends AggregateRoot
         return $this->type;
     }
 
+    public function profile(): CarrierProfile
+    {
+        return $this->profile;
+    }
+
     public function phone(): ?string
     {
-        return $this->phone;
+        return $this->profile->phone;
     }
 
     public function vehiclePlate(): ?string
     {
-        return $this->vehiclePlate;
+        return $this->profile->vehiclePlate;
+    }
+
+    public function photoPath(): ?string
+    {
+        return $this->photoPath;
     }
 
     public function isActive(): bool

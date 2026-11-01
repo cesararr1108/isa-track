@@ -23,4 +23,16 @@ final class FleetCarrierDirectory implements CarrierDirectory
     {
         return $this->carriers->find($companyId, $carrierId)?->name();
     }
+
+    public function publicProfile(CompanyId $companyId, CarrierId $carrierId): ?array
+    {
+        $carrier = $this->carriers->find($companyId, $carrierId);
+
+        return $carrier === null ? null : [
+            'name' => $carrier->name(),
+            'vehicle_type' => $carrier->profile()->vehicleType?->value,
+            'vehicle_plate' => $carrier->vehiclePlate(),
+            'photo_path' => $carrier->photoPath(),
+        ];
+    }
 }

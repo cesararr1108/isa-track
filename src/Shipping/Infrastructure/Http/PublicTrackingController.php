@@ -6,14 +6,29 @@ namespace Isa\Shipping\Infrastructure\Http;
 
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Storage;
 use Isa\Shipping\Application\TrackOrder\TrackOrderHandler;
 use Isa\Shipping\Domain\Exception\OrderNotFound;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class PublicTrackingController
 {
     public function json(string $code, TrackOrderHandler $trackOrder): JsonResponse
     {
         return new JsonResponse(['data' => $trackOrder($code)]);
+    }
+
+    /** Foto del mensajero para la página del cliente (solo mientras va en camino). */
+    public function carrierPhoto(string $code, TrackOrderHandler $trackOrder): StreamedResponse
+    {
+        try {
+            $path = $trackOrder->carrierPhotoPath($code);
+        } catch (OrderNotFound) {
+            abort(404);
+        }
+        abort_if($path === null, 404);
+
+        return Storage::disk(config('isa.fleet.photo_disk'))->response($path, null, ['Cache-Control' => 'private, max-age=300']);
     }
 
     public function page(string $code, TrackOrderHandler $trackOrder): View
@@ -34,6 +49,8 @@ final class PublicTrackingController
                 'primary_color' => config('isa.branding.primary_color'),
                 'secondary_color' => config('isa.branding.secondary_color'),
             ],
+            'highlight' => config('isa.branding.highlight_color'),
+            'depot' => config('isa.routing.depot'),
         ]);
     }
 }

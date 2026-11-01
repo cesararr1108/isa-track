@@ -51,6 +51,11 @@ final class OrderPresenter
             'promised_at' => $order->promisedAt()?->format(DATE_ATOM),
             'created_at' => $order->createdAt()->format(DATE_ATOM),
             'cash_on_delivery' => $order->cashOnDelivery()?->amount,
+            'delivery_fee' => $order->deliveryCharge()?->fee->amount,
+            'zone' => $order->deliveryCharge()?->zoneId === null ? null : [
+                'id' => $order->deliveryCharge()->zoneId,
+                'name' => $order->deliveryCharge()->zoneName,
+            ],
             'delivery' => self::delivery($order),
             'recipient' => [
                 'name' => $order->recipient()->name,

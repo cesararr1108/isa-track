@@ -11,7 +11,9 @@ use Isa\Shared\Domain\Clock;
 use Isa\Shared\Domain\ValueObject\GeoPoint;
 use Isa\Shared\Domain\ValueObject\Money;
 use Isa\Shared\Domain\ValueObject\UserId;
+use Isa\Shipping\Application\Port\DeliveryFeeQuoter;
 use Isa\Shipping\Domain\Address;
+use Isa\Shipping\Domain\DeliveryCharge;
 use Isa\Shipping\Domain\Order;
 use Isa\Shipping\Domain\OrderId;
 use Isa\Shipping\Domain\OrderRepository;
@@ -30,10 +32,13 @@ final class CreateOrderHandler
         private readonly TenantContext $tenant,
         private readonly Clock $clock,
         private readonly EventBus $events,
+        private readonly DeliveryFeeQuoter $fees,
     ) {}
 
     public function __invoke(CreateOrderCommand $command): Order
     {
+        $location = GeoPoint::fromNullable($command->latitude, $command->longitude);
+
         $order = Order::create(
             OrderId::generate(),
             $this->tenant->companyId(),
@@ -45,19 +50,32 @@ final class CreateOrderHandler
                 $command->city,
                 $command->neighborhood,
                 $command->addressReference,
-                GeoPoint::fromNullable($command->latitude, $command->longitude),
+                $location,
             ),
             $command->packages,
             $command->promisedAt !== null ? new DateTimeImmutable($command->promisedAt) : null,
             $this->clock->now(),
             $command->createdBy !== null ? UserId::fromString($command->createdBy) : null,
             $command->cashOnDelivery !== null ? new Money($command->cashOnDelivery) : null,
+            $this->deliveryCharge($command, $location),
         );
 
         $this->orders->save($order);
         $this->events->publish(...$order->pullDomainEvents());
 
         return $order;
+    }
+
+    /** Tarifa manual si viene en el comando; si no, la de la zona que cubre la dirección. */
+    private function deliveryCharge(CreateOrderCommand $command, ?GeoPoint $location): ?DeliveryCharge
+    {
+        $zone = $location !== null ? $this->fees->quote($this->tenant->companyId(), $location) : null;
+
+        if ($command->deliveryFee !== null) {
+            return new DeliveryCharge(new Money($command->deliveryFee), $zone?->zoneId, $zone?->zoneName);
+        }
+
+        return $zone;
     }
 
     private function uniqueTrackingCode(): TrackingCode

@@ -50,6 +50,7 @@ final class Order extends AggregateRoot
         private array $history,
         private readonly ?Money $cashOnDelivery,
         private ?Delivery $delivery,
+        private readonly ?DeliveryCharge $deliveryCharge,
     ) {}
 
     /**
@@ -67,6 +68,7 @@ final class Order extends AggregateRoot
         DateTimeImmutable $now,
         ?UserId $createdBy,
         ?Money $cashOnDelivery = null,
+        ?DeliveryCharge $deliveryCharge = null,
     ): self {
         if ($packages === []) {
             throw new OrderRequiresPackages;
@@ -84,7 +86,7 @@ final class Order extends AggregateRoot
 
         $order = new self(
             $id, $companyId, $trackingCode, $externalReference, $recipient, $address,
-            $packageEntities, OrderStatus::Created, null, $promisedAt, $now, [], $cashOnDelivery, null,
+            $packageEntities, OrderStatus::Created, null, $promisedAt, $now, [], $cashOnDelivery, null, $deliveryCharge,
         );
 
         $order->appendHistory(OrderStatus::Created, $now, $createdBy);
@@ -115,10 +117,11 @@ final class Order extends AggregateRoot
         array $history,
         ?Money $cashOnDelivery = null,
         ?Delivery $delivery = null,
+        ?DeliveryCharge $deliveryCharge = null,
     ): self {
         return new self(
             $id, $companyId, $trackingCode, $externalReference, $recipient, $address,
-            $packages, $status, $carrierId, $promisedAt, $createdAt, $history, $cashOnDelivery, $delivery,
+            $packages, $status, $carrierId, $promisedAt, $createdAt, $history, $cashOnDelivery, $delivery, $deliveryCharge,
         );
     }
 
@@ -331,6 +334,18 @@ final class Order extends AggregateRoot
     public function cashOnDelivery(): ?Money
     {
         return $this->cashOnDelivery;
+    }
+
+    /** Zona y tarifa del domicilio (null si ninguna zona cubre la dirección). */
+    public function deliveryCharge(): ?DeliveryCharge
+    {
+        return $this->deliveryCharge;
+    }
+
+    /** Peso total de los paquetes (los que no tienen peso cuentan 0). */
+    public function totalWeightKg(): float
+    {
+        return (float) array_sum(array_map(fn (Package $p) => $p->weightKg ?? 0.0, $this->packages));
     }
 
     public function delivery(): ?Delivery

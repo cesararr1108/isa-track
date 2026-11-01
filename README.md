@@ -1,4 +1,4 @@
-# ISA Track: logística y rastreo de pedidos (prototipo v0.2)
+# ISA Track: logística y rastreo de pedidos (prototipo v0.3)
 
 Núcleo del SaaS de logística para empresas de Medellín: **multiempresa, roles,
 pedidos con varios paquetes, estados con historial, asignación de transportador,
@@ -11,7 +11,9 @@ Stack: **PHP 8.3 · Laravel 13 · PostgreSQL 16** · Sanctum (tokens) · PHPUnit
 
 ---
 
-> **Prototipo navegable:** `docs/prototipo/index.html` es una maqueta en el navegador que aplica las mismas reglas del backend (despacho, app del conductor, rastreo público y caja). Ábrela directamente, sin instalar nada.
+> **Prototipo navegable:** `docs/prototipo/index.html` es una maqueta en el navegador que aplica las mismas reglas del backend. Tiene menú lateral con: resumen, pedidos, rutas, mapa en vivo, transportadores, zonas y tarifas, caja, reportes, usuarios y permisos, app del mensajero y vista del cliente. Usa Leaflet + OpenStreetMap. Ábrela directamente, sin instalar nada.
+
+**Colores corporativos:** azul profundo `#0B1F3A` (fondos oscuros, encabezados, menú), verde menta `#00C896` (botones principales, confirmaciones, estado "en camino") y ámbar `#FFB800` (alertas suaves, tarifas, puntos de interés). Están en `config/isa.php` (`branding`) y en la página de rastreo.
 
 ## 1. Arrancar en 5 minutos
 
@@ -176,7 +178,24 @@ Todas las privadas requieren `Authorization: Bearer <token>` y `Accept: applicat
 | GET | `/api/cash/summary?carrier_id=&date=` | `cash.view` | Recaudo del día por medio de pago (el conductor ve el suyo) |
 | GET | `/api/cash/closings?date=` | `cash.view` | Cierres de caja del día |
 | POST | `/api/cash/closings` | `cash.close` | `{carrier_id, date?, cash_received, notes?}` → cuadre del conductor |
+| GET/PUT | `/api/carriers/{id}` | `carriers.view` / `carriers.update` | Datos del mensajero: `document_number` (cédula), `phone`, `email`, `vehicle_plate`, `vehicle_type` (bicycle, motorcycle, car, van, truck, on_foot), `capacity_kg`, `capacity_packages` |
+| POST | `/api/carriers/{id}/active` | `carriers.update` | `{active}` activar / desactivar |
+| POST/GET | `/api/carriers/{id}/photo` | `carriers.update` / `carriers.view` | Foto del mensajero (multipart `photo`) |
+| POST | `/api/me/photo` | autenticado | El mensajero sube su propia foto |
+| GET/POST | `/api/zones` | `zones.view` / `zones.manage` | Zonas: `{name, color, delivery_fee, estimated_minutes, polygon: [[lat,lng],...]}` |
+| PUT/DELETE | `/api/zones/{id}` | `zones.manage` | Editar / borrar zona |
+| GET | `/api/zones/quote?latitude=&longitude=` | `zones.view` | Tarifa del domicilio en ese punto |
+| GET/POST | `/api/routes` | `routes.view` / `routes.manage` | Rutas por día: `{carrier_id, date, order_ids[], optimize?, name?}` |
+| GET | `/api/routes/{id}` · `/api/routes/{id}/geojson` | `routes.view` | Ruta con paradas, km y la geometría para el mapa |
+| PUT | `/api/routes/{id}/stops` | `routes.manage` | Reordenar `{order_ids}` |
+| POST | `/api/routes/{id}/optimize` | `routes.manage` | Reordenar para recorrer menos |
+| POST | `/api/routes/{id}/status` | `routes.drive` | `{status: in_progress\|completed\|cancelled}` |
+| GET | `/api/reports/summary?from=&to=&carrier_id=&zone_id=` | `reports.view` | Reporte por rango de fechas |
+| GET | `/api/reports/orders.csv?from=&to=` | `reports.view` | Pedidos del rango en CSV (Excel) |
+| GET | `/api/permissions` | `users.manage` | Catálogo de permisos y lo que trae cada rol |
+| GET/POST/PUT | `/api/users` · `/api/users/{id}` | `users.manage` | Usuarios: rol, `carrier_id`, `extra_permissions`, `revoked_permissions`, `active` |
 | GET | `/api/public/tracking/{codigo}` | público | Rastreo en JSON (sin datos personales) |
+| GET | `/api/public/tracking/{codigo}/carrier-photo` | público | Foto del mensajero, solo mientras el pedido va en camino |
 | GET | `/rastreo/{codigo}` | público | Página de rastreo móvil con la marca de la empresa |
 
 Ejemplo:
@@ -245,7 +264,16 @@ Ningún caso de uso cambia.
 - Hay un solo cierre por conductor y día, y queda guardada la foto de lo esperado en ese momento. Después del cierre ese conductor no puede registrar más cobros ese día (`cash_register_already_closed`).
 - Los módulos se hablan por puertos: Pedidos pregunta a Caja con `CashRegisterStatus`, y Caja lee los pagos de Pedidos con `CollectedPayments`. Ninguno llama directo a las clases del otro.
 
-## 8. Decisiones del prototipo y siguientes pasos
+## 8. Transportadores, zonas, rutas, reportes y permisos (v0.3)
+
+- **Transportadores (`Fleet`)**: cédula (solo dígitos, única por empresa), teléfono, correo, placa normalizada (`abc-12d` → `ABC12D`), tipo de vehículo, capacidad en kg y en paquetes, y foto. Un usuario mensajero se vincula a su transportador y de ahí salen su foto y placa.
+- **Zonas (`Zones`)**: polígonos dibujados en el mapa con su tarifa de domicilio. Al crear un pedido con coordenadas se calcula la zona y la tarifa (`DeliveryFeeQuoter`); si dos zonas se cruzan gana la más pequeña. Se puede enviar `delivery_fee` para fijarla a mano.
+- **Rutas (`Routing`)**: mensajero + día + pedidos. Valida que el mensajero esté activo, que los pedidos tengan coordenadas y no estén en otra ruta abierta, y que la carga quepa en el vehículo. Ordena las paradas (vecino más cercano + 2-opt desde la bodega `ISA_DEPOT_LAT/LNG`) y asigna los pedidos. `/geojson` entrega la ruta lista para Leaflet.
+- **Reportes (`Reports`)**: por rango de fechas (máx. 366 días): totales, efectividad, entregas a tiempo, por día, por mensajero, por zona, recaudo por medio de pago y novedades por motivo. Exporta CSV con `;` y BOM para Excel.
+- **Permisos por usuario**: además de su rol, a cada usuario se le dan permisos extra o se le quitan (quitar gana). Un usuario inactivo no entra.
+- **Vista del cliente** (`/rastreo/{codigo}`): colores corporativos, barra de progreso, foto, nombre y placa del mensajero mientras va en camino, mapa con su ubicación aproximada y tu barrio, zona y tarifa.
+
+## 9. Decisiones del prototipo y siguientes pasos
 
 - **Multiempresa** con columna `company_id`: doble barrera, con un filtro explícito en los repositorios y un *global scope* (`BelongsToCompany`). Más simple que `stancl/tenancy` para arrancar.
 - **IDs UUID v7** generados en el dominio (ordenables por tiempo; no exponen cuántos pedidos hay).

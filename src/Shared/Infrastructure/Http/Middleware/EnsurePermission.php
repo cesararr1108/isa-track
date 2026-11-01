@@ -11,6 +11,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Uso en rutas: ->middleware('permission:orders.create')
+ * Mira el rol y los permisos propios del usuario (dados y quitados).
  */
 final class EnsurePermission
 {
@@ -20,7 +21,12 @@ final class EnsurePermission
     {
         $user = $request->user();
 
-        if ($user === null || ! $this->permissions->allows($user->role, $permission)) {
+        if ($user === null || ! $this->permissions->allows(
+            $user->role,
+            $permission,
+            $user->permissions ?? [],
+            $user->revoked_permissions ?? [],
+        )) {
             abort(403, 'No tienes permiso para realizar esta acción.');
         }
 

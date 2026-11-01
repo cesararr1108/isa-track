@@ -12,6 +12,7 @@ use Isa\Shared\Domain\ValueObject\Money;
 use Isa\Shared\Domain\ValueObject\UserId;
 use Isa\Shipping\Domain\Address;
 use Isa\Shipping\Domain\Delivery;
+use Isa\Shipping\Domain\DeliveryCharge;
 use Isa\Shipping\Domain\DeliveryProof;
 use Isa\Shipping\Domain\IncidentReason;
 use Isa\Shipping\Domain\Order;
@@ -56,6 +57,8 @@ final class EloquentOrderRepository implements OrderRepository
                 'promised_at' => $order->promisedAt(),
                 'created_at' => $order->createdAt(),
                 'cash_on_delivery' => $order->cashOnDelivery()?->amount,
+                'zone_id' => $order->deliveryCharge()?->zoneId,
+                'delivery_fee' => $order->deliveryCharge()?->fee->amount,
                 'delivered_at' => $delivery?->deliveredAt,
                 'receiver_name' => $delivery?->proof->receiverName,
                 'receiver_document' => $delivery?->proof->receiverDocument,
@@ -110,7 +113,7 @@ final class EloquentOrderRepository implements OrderRepository
     public function find(CompanyId $companyId, OrderId $id): ?Order
     {
         $row = OrderModel::query()
-            ->with(['packages', 'history', 'payments'])
+            ->with(['packages', 'history', 'payments', 'zone'])
             ->where('company_id', $companyId->value())
             ->find($id->value());
 
@@ -121,7 +124,7 @@ final class EloquentOrderRepository implements OrderRepository
     {
         $row = OrderModel::query()
             ->withoutGlobalScope('company')
-            ->with(['packages', 'history', 'payments'])
+            ->with(['packages', 'history', 'payments', 'zone'])
             ->where('tracking_code', $code->value())
             ->first();
 
@@ -169,6 +172,7 @@ final class EloquentOrderRepository implements OrderRepository
             ))->all(),
             $row->cash_on_delivery !== null ? new Money($row->cash_on_delivery) : null,
             $this->deliveryOf($row),
+            $row->delivery_fee !== null ? new DeliveryCharge(new Money($row->delivery_fee), $row->zone_id, $row->zone?->name) : null,
         );
     }
 

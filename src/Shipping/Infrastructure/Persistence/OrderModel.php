@@ -6,8 +6,10 @@ namespace Isa\Shipping\Infrastructure\Persistence;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Isa\Shared\Infrastructure\Tenancy\BelongsToCompany;
+use Isa\Zones\Infrastructure\Persistence\ZoneModel;
 
 final class OrderModel extends Model
 {
@@ -23,6 +25,7 @@ final class OrderModel extends Model
         'promised_at' => 'immutable_datetime',
         'delivered_at' => 'immutable_datetime',
         'cash_on_delivery' => 'integer',
+        'delivery_fee' => 'integer',
         'delivery_latitude' => 'float',
         'delivery_longitude' => 'float',
         'created_at' => 'immutable_datetime',
@@ -31,6 +34,11 @@ final class OrderModel extends Model
     public function packages(): HasMany
     {
         return $this->hasMany(PackageModel::class, 'order_id')->orderBy('code');
+    }
+
+    public function zone(): BelongsTo
+    {
+        return $this->belongsTo(ZoneModel::class, 'zone_id')->withoutGlobalScope('company');
     }
 
     public function payments(): HasMany

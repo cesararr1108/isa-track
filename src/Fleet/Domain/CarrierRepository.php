@@ -15,4 +15,7 @@ interface CarrierRepository
 
     /** @return list<Carrier> */
     public function allOf(CompanyId $companyId, bool $onlyActive = false): array;
+
+    /** ¿Otro mensajero de la empresa ya usa esta cédula? */
+    public function documentTaken(CompanyId $companyId, string $documentNumber, ?CarrierId $except = null): bool;
 }
