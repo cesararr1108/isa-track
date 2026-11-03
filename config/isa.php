@@ -56,6 +56,26 @@ return [
     'fleet' => [
         'photo_disk' => env('ISA_CARRIER_PHOTO_DISK', 'local'),
         'photo_max_kb' => (int) env('ISA_CARRIER_PHOTO_MAX_KB', 4096),
+        'vehicle_labels' => [
+            'motorcycle' => 'Moto', 'bicycle' => 'Bicicleta', 'car' => 'Carro',
+            'van' => 'Camioneta', 'truck' => 'Camión', 'on_foot' => 'A pie',
+        ],
+    ],
+
+    /*
+    | Menú del panel. El servidor lo filtra por permiso antes de enviarlo.
+    | route = null: sección que todavía no está construida (se muestra como "Pronto").
+    */
+    'navigation' => [
+        ['key' => 'dashboard', 'group' => 'Operación', 'label' => 'Resumen', 'icon' => 'panel', 'route' => 'panel.dashboard', 'permission' => null],
+        ['key' => 'orders', 'group' => 'Operación', 'label' => 'Pedidos', 'icon' => 'orders', 'route' => null, 'permission' => 'orders.view'],
+        ['key' => 'routes', 'group' => 'Operación', 'label' => 'Rutas', 'icon' => 'routes', 'route' => null, 'permission' => 'routes.view'],
+        ['key' => 'live', 'group' => 'Operación', 'label' => 'Mapa en vivo', 'icon' => 'live', 'route' => null, 'permission' => 'orders.view'],
+        ['key' => 'carriers', 'group' => 'Flota y tarifas', 'label' => 'Transportadores', 'icon' => 'carriers', 'route' => 'panel.carriers.index', 'permission' => 'carriers.view'],
+        ['key' => 'zones', 'group' => 'Flota y tarifas', 'label' => 'Zonas y tarifas', 'icon' => 'zones', 'route' => 'panel.zones.index', 'permission' => 'zones.view'],
+        ['key' => 'cash', 'group' => 'Finanzas', 'label' => 'Caja', 'icon' => 'cash', 'route' => null, 'permission' => 'cash.view'],
+        ['key' => 'reports', 'group' => 'Finanzas', 'label' => 'Reportes', 'icon' => 'reports', 'route' => null, 'permission' => 'reports.view'],
+        ['key' => 'users', 'group' => 'Administración', 'label' => 'Usuarios y permisos', 'icon' => 'users', 'route' => null, 'permission' => 'users.manage'],
     ],
 
     /*

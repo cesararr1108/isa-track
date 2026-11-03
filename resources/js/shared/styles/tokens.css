@@ -1,0 +1,40 @@
+/* Colores corporativos ISA y tokens de diseño. Toda la interfaz usa estas variables. */
+:root {
+  --navy: #0B1F3A;   /* azul profundo: menú, encabezados, fondos oscuros */
+  --mint: #00C896;   /* verde menta: botones, confirmaciones, "en camino" */
+  --amber: #FFB800;  /* ámbar: alertas suaves, tarifas, puntos de interés */
+
+  --bg: #F2F5F9; --surface: #FFFFFF; --sunken: #E9EEF5; --line: #D5DEE9;
+  --fg: #0B1F3A; --muted: #55667E;
+  --side-bg: #0B1F3A; --side-fg: #C3D1E4; --side-muted: #7F93AF; --side-hover: #142C4D;
+  --accent: var(--mint); --accent-ink: #062018; --accent-soft: #D6F5EC; --accent-text: #00805F;
+  --amber-ink: #3A2A00; --amber-soft: #FFF1C7; --amber-text: #8A6200;
+  --danger: #D92D20;
+  --s-created: #64748B; --s-prepared: #6366F1; --s-assigned: #0EA5E9; --s-in_route: #00C896;
+  --s-delivered: #16A34A; --s-incident: #FFB800; --s-returned: #D92D20;
+  --map-bg: #E4EBF2;
+
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", sans-serif;
+  --body: "Figtree Variable", "Figtree", "Segoe UI", system-ui, sans-serif;
+  --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --radius: 12px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #06111F; --surface: #0D1D33; --sunken: #0A182A; --line: #1D324F; --fg: #EAF1FA; --muted: #93A6C1;
+    --side-bg: #040C17; --side-hover: #0E2240; --side-muted: #6E84A3;
+    --accent-ink: #04140F; --accent-soft: #0B3A2F; --accent-text: #3EE0B5;
+    --amber-ink: #241A00; --amber-soft: #3A2C05; --amber-text: #FFCB47; --danger: #F97066;
+    --map-bg: #0B1A2C;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #06111F; --surface: #0D1D33; --sunken: #0A182A; --line: #1D324F; --fg: #EAF1FA; --muted: #93A6C1;
+  --side-bg: #040C17; --side-hover: #0E2240; --side-muted: #6E84A3;
+  --accent-ink: #04140F; --accent-soft: #0B3A2F; --accent-text: #3EE0B5;
+  --amber-ink: #241A00; --amber-soft: #3A2C05; --amber-text: #FFCB47; --danger: #F97066;
+  --map-bg: #0B1A2C;
+  color-scheme: dark;
+}

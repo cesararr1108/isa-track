@@ -38,12 +38,12 @@ final class CarriersAndZonesTest extends TestCase
         $this->postJson('/api/carriers', ['name' => 'Otro', 'type' => 'own_driver', 'document_number' => '1037654321'])
             ->assertUnprocessable()->assertJsonPath('error', 'duplicate_carrier_document');
 
-        $this->post("/api/carriers/{$carrier['id']}/photo", ['photo' => UploadedFile::fake()->image('juan.jpg')], ['Accept' => 'application/json'])
+        $this->post("/api/carriers/{$carrier['id']}/photo", ['photo' => UploadedFile::fake()->image('juan.jpg', 200, 200)], ['Accept' => 'application/json'])
             ->assertOk()->assertJsonPath('data.has_photo', true);
         $this->get("/api/carriers/{$carrier['id']}/photo")->assertOk();
 
         // Reemplazar la foto borra la anterior.
-        $this->post("/api/carriers/{$carrier['id']}/photo", ['photo' => UploadedFile::fake()->image('juan2.png')], ['Accept' => 'application/json'])->assertOk();
+        $this->post("/api/carriers/{$carrier['id']}/photo", ['photo' => UploadedFile::fake()->image('juan2.png', 200, 200)], ['Accept' => 'application/json'])->assertOk();
         self::assertCount(1, Storage::disk('local')->allFiles('carriers'));
 
         $this->putJson("/api/carriers/{$carrier['id']}", ['name' => 'Juan P.', 'type' => 'own_driver', 'vehicle_type' => 'car', 'vehicle_plate' => 'XYZ987'])
@@ -59,7 +59,7 @@ final class CarriersAndZonesTest extends TestCase
         $carrierId = $this->carrier($company);
         Sanctum::actingAs($this->user($company, Role::Driver, $carrierId));
 
-        $this->post('/api/me/photo', ['photo' => UploadedFile::fake()->image('yo.jpg')], ['Accept' => 'application/json'])
+        $this->post('/api/me/photo', ['photo' => UploadedFile::fake()->image('yo.jpg', 200, 200)], ['Accept' => 'application/json'])
             ->assertOk()->assertJsonPath('data.id', $carrierId)->assertJsonPath('data.has_photo', true);
         $this->getJson('/api/auth/me')->assertJsonPath('user.carrier.photo_url', url("/api/carriers/{$carrierId}/photo"));
         $this->putJson("/api/carriers/{$carrierId}", ['name' => 'X', 'type' => 'own_driver'])->assertForbidden();

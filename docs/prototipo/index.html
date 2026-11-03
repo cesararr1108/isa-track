@@ -375,9 +375,6 @@ table.t tbody tr:hover { background: var(--sunken); }
 <div id="toast" class="toast" hidden></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@maplibre/maplibre-gl-leaflet@0.1.3/leaflet-maplibre-gl.js"></script>
 <script>
 'use strict';
 /* =====================================================================
@@ -749,8 +746,10 @@ function render() {
  * 'osm'      OpenStreetMap (imágenes). Sin llave; abierto como archivo (file://) lo rechaza.
  * Si un estilo no carga se pasa al siguiente: vectorial → Esri → OpenStreetMap → aviso.
  */
-const MAP_CONFIG = { style: 'urbano', maptilerKey: '' };
-const MAP_STYLES = { urbano: 'Urbano', claro: 'Claro', brillante: 'Brillante', maptiler: 'MapTiler (con llave)', esri: 'Esri', osm: 'OpenStreetMap' };
+const MAP_CONFIG = { style: 'esri', maptilerKey: '' };
+// El mapa urbano vectorial (OpenFreeMap / MapTiler) vive en el panel real (resources/js/shared/map), empaquetado
+// con una versión de MapLibre sin vulnerabilidades. Este prototipo de demostración usa solo mapas en imágenes.
+const MAP_STYLES = { esri: 'Esri', osm: 'OpenStreetMap' };
 try { const saved = localStorage.getItem('isa-map-style'); if (MAP_STYLES[saved]) MAP_CONFIG.style = saved; } catch (e) { /* sin almacenamiento */ }
 const isDark = () => document.documentElement.dataset.theme === 'dark' || (document.documentElement.dataset.theme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
 const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/';

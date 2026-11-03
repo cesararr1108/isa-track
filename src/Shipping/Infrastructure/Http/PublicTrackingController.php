@@ -51,20 +51,8 @@ final class PublicTrackingController
             ],
             'highlight' => config('isa.branding.highlight_color'),
             'depot' => config('isa.routing.depot'),
-            'mapStyleUrl' => self::mapStyleUrl(),
+            'mapStyle' => config('isa.maps.style'),
+            'maptilerKey' => config('isa.maps.maptiler_key'),
         ]);
-    }
-
-    /** URL del estilo vectorial del mapa, o null para usar OpenStreetMap en imágenes. */
-    private static function mapStyleUrl(): ?string
-    {
-        $style = (string) config('isa.maps.style');
-        $key = config('isa.maps.maptiler_key');
-        if ($style === 'maptiler') {
-            return $key ? 'https://api.maptiler.com/maps/streets-v2/style.json?key='.urlencode((string) $key) : null;
-        }
-        $openFreeMap = ['urbano' => 'liberty', 'claro' => 'positron', 'brillante' => 'bright'][$style] ?? null;
-
-        return $openFreeMap === null ? null : 'https://tiles.openfreemap.org/styles/'.$openFreeMap;
     }
 }

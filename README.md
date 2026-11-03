@@ -1,4 +1,4 @@
-# ISA Track: logística y rastreo de pedidos (prototipo v0.3)
+# ISA Track: logística y rastreo de pedidos (v0.4)
 
 Núcleo del SaaS de logística para empresas de Medellín: **multiempresa, roles,
 pedidos con varios paquetes, estados con historial, asignación de transportador,
@@ -14,6 +14,45 @@ Stack: **PHP 8.3 · Laravel 13 · PostgreSQL 16** · Sanctum (tokens) · PHPUnit
 > **Prototipo navegable:** `docs/prototipo/index.html` es una maqueta en el navegador que aplica las mismas reglas del backend. Tiene menú lateral con: resumen, pedidos, rutas, mapa en vivo, transportadores, zonas y tarifas, caja, reportes, usuarios y permisos, app del mensajero y vista del cliente. Usa Leaflet + OpenStreetMap. Ábrela directamente, sin instalar nada.
 
 **Colores corporativos:** azul profundo `#0B1F3A` (fondos oscuros, encabezados, menú), verde menta `#00C896` (botones principales, confirmaciones, estado "en camino") y ámbar `#FFB800` (alertas suaves, tarifas, puntos de interés). Están en `config/isa.php` (`branding`) y en la página de rastreo.
+
+## 0. Panel web (etapa 1)
+
+La aplicación real ya tiene **panel web** en `http://localhost:8000` (o la IP de tu servidor):
+inicio de sesión, menú según permisos, **Resumen**, **Transportadores** y **Zonas y tarifas**.
+Las secciones marcadas "Pronto" se construyen en las siguientes etapas; mientras tanto se pueden ver en `/prototipo`.
+
+**Stack (elegido por seguridad primero, luego escalabilidad):** Laravel 13 + Inertia.js + Vue 3 + TypeScript + Vite.
+
+- Sesión de servidor con cookie `httpOnly` y protección CSRF (no hay tokens guardados en el navegador).
+- El servidor decide qué página y qué datos ve cada usuario; el menú llega ya filtrado por permisos.
+- Todo el JavaScript, las fuentes y el mapa se empaquetan en el propio servidor: la
+  Content-Security-Policy solo permite scripts propios con *nonce*.
+- Login con máximo 5 intentos por minuto por correo e IP, regeneración de sesión y usuarios inactivos bloqueados.
+- Historial del navegador cifrado: después de cerrar sesión, "atrás" no muestra datos.
+- Fotos validadas por tipo real (JPG/PNG/WebP) y tamaño antes de guardar nada.
+
+```
+resources/js/
+├── app.ts                    Arranque de Inertia
+├── tracking.ts               Mapa de la página pública de rastreo
+├── modules/<módulo>/         Igual que los módulos del backend
+│   ├── pages/                Una página por pantalla (Inertia::render('<módulo>/pages/<Página>'))
+│   └── components/
+├── shared/
+│   ├── layouts/AppLayout.vue Menú lateral, barra superior, mensajes
+│   ├── map/createMap.ts      Mapa urbano (OpenFreeMap) con respaldo OSM/Esri
+│   ├── ui/  lib/  styles/    Componentes, utilidades y tokens de color corporativo
+└── types/                    Tipos TypeScript de los datos del servidor
+```
+
+Para compilar el frontend (en tu equipo o en el servidor, cada vez que cambie):
+
+```bash
+npm ci
+npm run build      # revisa tipos (vue-tsc) y genera public/build
+```
+
+En desarrollo: `npm run dev` junto a `php artisan serve`.
 
 ## 1. Arrancar en 5 minutos
 

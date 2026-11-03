@@ -41,3 +41,20 @@ jobs:
           DB_DATABASE: isa_track_test
           DB_USERNAME: isa
           DB_PASSWORD: secret
+
+      - name: Dependencias PHP sin vulnerabilidades conocidas
+        run: composer audit
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Dependencias JS sin vulnerabilidades altas
+        run: npm audit --audit-level=high
+      - name: Tipos (vue-tsc) y compilación
+        run: npm run build

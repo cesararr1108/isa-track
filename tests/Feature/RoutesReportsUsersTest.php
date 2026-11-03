@@ -176,7 +176,7 @@ final class RoutesReportsUsersTest extends TestCase
         $company = $this->company('Tienda Uno');
         $carrierId = $this->carrierWithCapacity($company, null, null);
         Sanctum::actingAs($this->user($company, Role::CompanyAdmin));
-        $this->post("/api/carriers/{$carrierId}/photo", ['photo' => UploadedFile::fake()->image('j.jpg')], ['Accept' => 'application/json'])->assertOk();
+        $this->post("/api/carriers/{$carrierId}/photo", ['photo' => UploadedFile::fake()->image('j.jpg', 200, 200)], ['Accept' => 'application/json'])->assertOk();
         $order = $this->postJson('/api/orders', $this->orderPayload(['address' => ['line' => 'Cra 43A', 'latitude' => 6.2088, 'longitude' => -75.5679]]))->json('data');
         $this->postJson("/api/orders/{$order['id']}/assign", ['carrier_id' => $carrierId]);
 
@@ -190,7 +190,8 @@ final class RoutesReportsUsersTest extends TestCase
             ->assertJsonPath('data.destination_point.latitude', 6.21)
             ->assertJsonMissingPath('data.carrier.document_number');
         $this->get("/api/public/tracking/{$order['tracking_code']}/carrier-photo")->assertOk();
-        $this->get("/rastreo/{$order['tracking_code']}")->assertOk()->assertSee('En camino')->assertSee('ABC12D');
+        $page = $this->get("/rastreo/{$order['tracking_code']}")->assertOk()->assertSee('En camino')->assertSee('ABC12D')->assertSee('tracking-map-data');
+        self::assertStringContainsString("script-src 'self' 'nonce-", (string) $page->headers->get('Content-Security-Policy'));
     }
 
     private function carrierWithCapacity(CompanyId $company, ?float $kg, ?int $packages): string
