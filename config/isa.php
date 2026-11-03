@@ -58,6 +58,15 @@ return [
         'photo_max_kb' => (int) env('ISA_CARRIER_PHOTO_MAX_KB', 4096),
     ],
 
+    /*
+    | Mapa de calles de la página de rastreo (sin llave salvo MapTiler):
+    | urbano (OpenFreeMap Liberty, tipo Rappi) | claro (Positron) | brillante (Bright) | maptiler | osm
+    */
+    'maps' => [
+        'style' => env('ISA_MAP_STYLE', 'urbano'),
+        'maptiler_key' => env('MAPTILER_KEY'),
+    ],
+
     /* Rutas: punto de partida por defecto (bodega). Medellín, sector Guayabal. */
     'routing' => [
         'depot' => [

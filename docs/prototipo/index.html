@@ -190,6 +190,8 @@ label.f input[type="color"] { padding: 2px; height: 40px; }
 .leaflet-container { overflow: hidden; -webkit-tap-highlight-color: transparent; font-family: var(--body); outline-offset: 1px; }
 .leaflet-tile, .leaflet-marker-icon, .leaflet-marker-shadow { user-select: none; -webkit-user-drag: none; }
 .leaflet-tile { visibility: hidden; }
+.leaflet-gl-layer { position: absolute; z-index: 150; }
+.maplibregl-map { font-family: var(--body); }
 .tiles-dark { filter: brightness(.65) invert(1) contrast(.9) hue-rotate(200deg) saturate(.5); }
 .map-off { position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 1000; max-width: calc(100% - 24px); background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-left: 4px solid var(--amber); border-radius: 8px; padding: 6px 10px; font-size: .76rem; box-shadow: 0 2px 8px rgb(0 0 0 / .15); }
 .leaflet-tile-loaded { visibility: inherit; }
@@ -354,6 +356,7 @@ table.t tbody tr:hover { background: var(--sunken); }
     </div>
     <nav class="nav" id="nav"></nav>
     <div class="foot">
+      <label for="map-style" style="display:grid;gap:4px">Estilo del mapa<select id="map-style" style="background:var(--side-hover);color:var(--side-fg);border:1px solid var(--side-hover);border-radius:8px;padding:6px"></select></label>
       <button id="reset" type="button">Reiniciar demo</button>
       <span>Prototipo v0.3 · las reglas son las del backend (src/)</span>
     </div>
@@ -372,6 +375,9 @@ table.t tbody tr:hover { background: var(--sunken); }
 <div id="toast" class="toast" hidden></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@maplibre/maplibre-gl-leaflet@0.1.3/leaflet-maplibre-gl.js"></script>
 <script>
 'use strict';
 /* =====================================================================
@@ -734,24 +740,50 @@ function render() {
 
 /* ---------- mapas (Leaflet + OpenStreetMap) ---------- */
 /*
- * Calles del mapa, sin llave (API key):
- * - Esri World Street Map: funciona también abriendo el archivo con doble clic (file://).
- * - OpenStreetMap: solo responde si la página tiene dirección web (http://localhost:8000/prototipo);
- *   abierta como archivo la rechaza por no tener "Referer".
- * CARTO ya no se usa: sin llave devuelve teselas con la marca "API KEY REQUIRED".
- * Si ninguna carga (sin internet, o un visor que bloquea imágenes externas) se avisa sobre el mapa.
+ * ===== Mapa de calles: CAMBIA AQUÍ EL ESTILO =====
+ * 'urbano'   OpenFreeMap "Liberty": mapa vectorial con calles, comercios y edificios (tipo Rappi). Sin llave.
+ * 'claro'    OpenFreeMap "Positron": gris muy limpio, resalta pedidos y rutas. Sin llave.
+ * 'brillante' OpenFreeMap "Bright": colores vivos. Sin llave.
+ * 'maptiler' MapTiler "Streets": el más parecido a Google/Rappi. Requiere llave gratis (maptiler.com, 100.000 cargas/mes).
+ * 'esri'     Esri World Street Map (imágenes). Sin llave.
+ * 'osm'      OpenStreetMap (imágenes). Sin llave; abierto como archivo (file://) lo rechaza.
+ * Si un estilo no carga se pasa al siguiente: vectorial → Esri → OpenStreetMap → aviso.
  */
+const MAP_CONFIG = { style: 'urbano', maptilerKey: '' };
+const MAP_STYLES = { urbano: 'Urbano', claro: 'Claro', brillante: 'Brillante', maptiler: 'MapTiler (con llave)', esri: 'Esri', osm: 'OpenStreetMap' };
+try { const saved = localStorage.getItem('isa-map-style'); if (MAP_STYLES[saved]) MAP_CONFIG.style = saved; } catch (e) { /* sin almacenamiento */ }
 const isDark = () => document.documentElement.dataset.theme === 'dark' || (document.documentElement.dataset.theme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
 const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/';
-const TILE_SOURCES = () => {
+const OSM_ATTR = '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>';
+function vectorStyle(style) {
+  if (style === 'maptiler') return MAP_CONFIG.maptilerKey ? `https://api.maptiler.com/maps/${isDark() ? 'streets-v2-dark' : 'streets-v2'}/style.json?key=${encodeURIComponent(MAP_CONFIG.maptilerKey)}` : null;
+  const ofm = { urbano: 'liberty', claro: 'positron', brillante: 'bright' }[style];
+  return ofm ? `https://tiles.openfreemap.org/styles/${isDark() && style === 'claro' ? 'dark' : ofm}` : null;
+}
+const RASTERS = () => {
   const esri = isDark()
-    ? { url: ESRI + 'Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', opts: { maxZoom: 16, attribution: 'Mapa © Esri, HERE, Garmin, © OpenStreetMap' } }
-    : { url: ESRI + 'World_Street_Map/MapServer/tile/{z}/{y}/{x}', opts: { maxZoom: 19, attribution: 'Mapa © Esri, HERE, Garmin, USGS, © OpenStreetMap' } };
-  const osm = { url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', opts: { maxZoom: 19, className: isDark() ? 'tiles-dark' : '', attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' } };
-  return location.protocol === 'file:' ? [esri, osm] : [osm, esri];
+    ? { url: ESRI + 'Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', opts: { maxZoom: 16, attribution: 'Mapa © Esri, HERE, Garmin, ' + OSM_ATTR } }
+    : { url: ESRI + 'World_Street_Map/MapServer/tile/{z}/{y}/{x}', opts: { maxZoom: 19, attribution: 'Mapa © Esri, HERE, Garmin, USGS, ' + OSM_ATTR } };
+  const osm = { url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', opts: { maxZoom: 19, className: isDark() ? 'tiles-dark' : '', attribution: OSM_ATTR } };
+  return MAP_CONFIG.style === 'osm' || location.protocol !== 'file:' ? [osm, esri] : [esri, osm];
 };
-function addStreets(m, i = 0) {
-  const src = TILE_SOURCES()[i];
+function streetsReady(m) { if (m._sketch) { m.removeLayer(m._sketch); m._sketch = null; } }
+function addStreets(m) {
+  const url = vectorStyle(MAP_CONFIG.style);
+  if (url && window.maplibregl && L.maplibreGL && maplibregl.supported?.() !== false) {
+    let ok = false;
+    const gl = L.maplibreGL({ style: url, attribution: MAP_CONFIG.style === 'maptiler' ? '© MapTiler ' + OSM_ATTR : '<a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> ' + OSM_ATTR }).addTo(m);
+    const fail = () => { if (ok || !m.getContainer().isConnected) return; ok = true; m.removeLayer(gl); addRaster(m, 0); };
+    const lib = gl.getMaplibreMap();
+    lib.once('load', () => { ok = true; streetsReady(m); });
+    lib.on('error', () => { if (!lib.loaded()) fail(); });
+    setTimeout(fail, 8000);
+    return;
+  }
+  addRaster(m, 0);
+}
+function addRaster(m, i) {
+  const src = RASTERS()[i];
   if (!src) {
     const n = document.createElement('div'); n.className = 'map-off';
     n.textContent = 'No se pudieron cargar las calles (sin internet o el visor bloquea imágenes externas). Las zonas, rutas y pedidos sí se muestran.';
@@ -759,8 +791,8 @@ function addStreets(m, i = 0) {
   }
   let loaded = 0, failed = 0;
   const layer = L.tileLayer(src.url, src.opts).addTo(m);
-  layer.on('tileload', () => loaded++);
-  layer.on('tileerror', () => { if (++failed >= 4 && loaded === 0) { layer.off(); m.removeLayer(layer); addStreets(m, i + 1); } });
+  layer.on('tileload', () => { if (!loaded++) streetsReady(m); });
+  layer.on('tileerror', () => { if (++failed >= 4 && loaded === 0) { layer.off(); m.removeLayer(layer); addRaster(m, i + 1); } });
 }
 
 function lmap(id, { center = CENTER, zoom = 12, sketch = true, labels = true } = {}) {
@@ -768,12 +800,13 @@ function lmap(id, { center = CENTER, zoom = 12, sketch = true, labels = true } =
   if (!el) return null;
   if (!window.L) { el.innerHTML = '<p class="empty">El mapa necesita conexión a internet (Leaflet + OpenStreetMap).</p>'; return null; }
   const m = L.map(el, { scrollWheelZoom: false }).setView(center, zoom);
-  addStreets(m);
   if (sketch) {
-    // Trazo de referencia del río y barrios: se ve aunque no carguen las teselas.
-    L.polyline([[6.140, -75.610], [6.170, -75.600], [6.195, -75.588], [6.215, -75.579], [6.240, -75.574], [6.265, -75.569], [6.290, -75.562]], { className: 'river', weight: 5, opacity: .8, interactive: false }).addTo(m);
-    if (labels) Object.entries(BARRIOS).filter(([k]) => !k.includes('(')).forEach(([k, p]) => L.marker(p, { interactive: false, icon: L.divIcon({ className: 'pin-icon', html: `<span class="blabel">${k}</span>`, iconSize: [0, 0], iconAnchor: [-8, 14] }) }).addTo(m));
+    // Trazo de referencia del río y barrios: se ve mientras cargan las calles (o si no cargan) y luego se quita.
+    m._sketch = L.layerGroup().addTo(m);
+    L.polyline([[6.140, -75.610], [6.170, -75.600], [6.195, -75.588], [6.215, -75.579], [6.240, -75.574], [6.265, -75.569], [6.290, -75.562]], { className: 'river', weight: 5, opacity: .8, interactive: false }).addTo(m._sketch);
+    if (labels) Object.entries(BARRIOS).filter(([k]) => !k.includes('(')).forEach(([k, p]) => L.marker(p, { interactive: false, icon: L.divIcon({ className: 'pin-icon', html: `<span class="blabel">${k}</span>`, iconSize: [0, 0], iconAnchor: [-8, 14] }) }).addTo(m._sketch));
   }
+  addStreets(m);
   MAPS.push(m); return m;
 }
 const icon = (html, size = 26) => L.divIcon({ className: 'pin-icon', html, iconSize: [size, size], iconAnchor: [size / 2, size / 2], popupAnchor: [0, -size / 2] });
@@ -1392,6 +1425,13 @@ scrim.addEventListener('click', closeMenu);
 function go(v) { S.view = v; closeMenu(); render(); window.scrollTo({ top: 0 }); }
 document.getElementById('nav').addEventListener('click', e => { const b = e.target.closest('[data-view]'); if (b) go(b.dataset.view); });
 document.getElementById('acting').addEventListener('change', e => { S.acting = e.target.value; S.driver = { screen: 'list', orderId: null }; DF = null; render(); toast(`Ahora ves el sistema como ${user().name} (${ROLE_LABELS[user().role]}).`); });
+const $ms = document.getElementById('map-style');
+$ms.innerHTML = Object.entries(MAP_STYLES).map(([k, v]) => `<option value="${k}" ${k === MAP_CONFIG.style ? 'selected' : ''}>${v}</option>`).join('');
+$ms.addEventListener('change', () => {
+  MAP_CONFIG.style = $ms.value; try { localStorage.setItem('isa-map-style', $ms.value); } catch (e) { /* sin almacenamiento */ }
+  if ($ms.value === 'maptiler' && !MAP_CONFIG.maptilerKey) toast('MapTiler necesita una llave: ponla en MAP_CONFIG.maptilerKey (arriba del código del mapa). Mientras tanto se usa Esri.', true);
+  render();
+});
 document.getElementById('reset').addEventListener('click', () => { seed(); DF = null; render(); toast('Demo reiniciada con los datos de ejemplo.'); });
 
 $app.addEventListener('click', e => {

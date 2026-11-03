@@ -18,6 +18,7 @@
     <title>Pedido {{ $tracking['tracking_code'] }} · {{ $branding['name'] }}</title>
     @if ($here || $dest)
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
     @endif
     <style>
         /* Colores corporativos ISA: azul profundo, verde menta (en camino / confirmaciones) y ámbar (alertas y tarifas). */
@@ -153,16 +154,30 @@
 
 @if ($carrier && ($here || $dest))
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@maplibre/maplibre-gl-leaflet@0.1.3/leaflet-maplibre-gl.js"></script>
     <script>
         (function () {
             if (!window.L) return;
             var here = @json($here ? [$here['latitude'], $here['longitude']] : null);
             var dest = @json($dest ? [$dest['latitude'], $dest['longitude']] : null);
             var map = L.map('map', { zoomControl: false, attributionControl: true });
-            // OpenStreetMap (esta página tiene dirección web, así que lo acepta); Esri de respaldo. Ninguno pide llave.
-            var tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map), fails = 0, ok = 0;
-            tiles.on('tileload', function () { ok++; });
-            tiles.on('tileerror', function () { if (++fails === 4 && !ok) { map.removeLayer(tiles); L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Mapa © Esri, © OpenStreetMap' }).addTo(map); } });
+            // Calles: estilo vectorial (config isa.maps / ISA_MAP_STYLE); si no carga, OpenStreetMap y luego Esri.
+            var styleUrl = @json($mapStyleUrl);
+            function raster() {
+                var tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map), fails = 0, ok = 0;
+                tiles.on('tileload', function () { ok++; });
+                tiles.on('tileerror', function () { if (++fails === 4 && !ok) { map.removeLayer(tiles); L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Mapa © Esri, © OpenStreetMap' }).addTo(map); } });
+            }
+            if (styleUrl && window.maplibregl && L.maplibreGL) {
+                var done = false, gl = L.maplibreGL({ style: styleUrl, attribution: '© OpenStreetMap' }).addTo(map);
+                var fallback = function () { if (done) return; done = true; map.removeLayer(gl); raster(); };
+                gl.getMaplibreMap().once('load', function () { done = true; });
+                gl.getMaplibreMap().on('error', function () { if (!gl.getMaplibreMap().loaded()) fallback(); });
+                setTimeout(fallback, 8000);
+            } else {
+                raster();
+            }
             var pts = [];
             if (dest) { L.circle(dest, { radius: 600, color: '#0B1F3A', weight: 2, fillOpacity: .08 }).addTo(map).bindTooltip('Tu barrio'); pts.push(dest); }
             if (here) { L.circleMarker(here, { radius: 9, color: '#fff', weight: 3, fillColor: '#00C896', fillOpacity: 1 }).addTo(map).bindTooltip('Mensajero (aprox.)', { permanent: true, direction: 'top' }); pts.push(here); }
