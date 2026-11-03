@@ -190,6 +190,7 @@ label.f input[type="color"] { padding: 2px; height: 40px; }
 .leaflet-container { overflow: hidden; -webkit-tap-highlight-color: transparent; font-family: var(--body); outline-offset: 1px; }
 .leaflet-tile, .leaflet-marker-icon, .leaflet-marker-shadow { user-select: none; -webkit-user-drag: none; }
 .leaflet-tile { visibility: hidden; }
+.tiles-dark { filter: brightness(.65) invert(1) contrast(.9) hue-rotate(200deg) saturate(.5); }
 .map-off { position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 1000; max-width: calc(100% - 24px); background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-left: 4px solid var(--amber); border-radius: 8px; padding: 6px 10px; font-size: .76rem; box-shadow: 0 2px 8px rgb(0 0 0 / .15); }
 .leaflet-tile-loaded { visibility: inherit; }
 .leaflet-container img.leaflet-tile, .leaflet-container .leaflet-marker-icon, .leaflet-container .leaflet-overlay-pane svg { max-width: none !important; max-height: none !important; }
@@ -733,16 +734,22 @@ function render() {
 
 /* ---------- mapas (Leaflet + OpenStreetMap) ---------- */
 /*
- * Calles del mapa. tile.openstreetmap.org rechaza las teselas cuando la página se abre
- * como archivo local (file://, sin "Referer"), por eso se usa primero CARTO (datos de
- * OpenStreetMap, no exige Referer) y OpenStreetMap queda de respaldo. Si ninguna carga
- * (sin internet, o un visor que bloquea imágenes externas) se avisa sobre el mapa.
+ * Calles del mapa, sin llave (API key):
+ * - Esri World Street Map: funciona también abriendo el archivo con doble clic (file://).
+ * - OpenStreetMap: solo responde si la página tiene dirección web (http://localhost:8000/prototipo);
+ *   abierta como archivo la rechaza por no tener "Referer".
+ * CARTO ya no se usa: sin llave devuelve teselas con la marca "API KEY REQUIRED".
+ * Si ninguna carga (sin internet, o un visor que bloquea imágenes externas) se avisa sobre el mapa.
  */
 const isDark = () => document.documentElement.dataset.theme === 'dark' || (document.documentElement.dataset.theme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
-const TILE_SOURCES = () => [
-  { url: `https://{s}.basemaps.cartocdn.com/${isDark() ? 'dark_all' : 'rastertiles/voyager'}/{z}/{x}/{y}{r}.png`, opts: { subdomains: 'abcd', maxZoom: 20, attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · © <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>' } },
-  { url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', opts: { maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' } },
-];
+const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/';
+const TILE_SOURCES = () => {
+  const esri = isDark()
+    ? { url: ESRI + 'Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', opts: { maxZoom: 16, attribution: 'Mapa © Esri, HERE, Garmin, © OpenStreetMap' } }
+    : { url: ESRI + 'World_Street_Map/MapServer/tile/{z}/{y}/{x}', opts: { maxZoom: 19, attribution: 'Mapa © Esri, HERE, Garmin, USGS, © OpenStreetMap' } };
+  const osm = { url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', opts: { maxZoom: 19, className: isDark() ? 'tiles-dark' : '', attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' } };
+  return location.protocol === 'file:' ? [esri, osm] : [osm, esri];
+};
 function addStreets(m, i = 0) {
   const src = TILE_SOURCES()[i];
   if (!src) {

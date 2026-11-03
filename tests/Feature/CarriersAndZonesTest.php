@@ -110,4 +110,9 @@ final class CarriersAndZonesTest extends TestCase
         $this->getJson('/api/zones')->assertJsonCount(1, 'data');
         $this->postJson('/api/zones', ['name' => 'Y', 'delivery_fee' => 1, 'polygon' => self::POBLADO])->assertForbidden();
     }
+
+    public function test_prototype_is_served_with_a_web_address(): void
+    {
+        $this->get('/prototipo')->assertOk()->assertSee('<!doctype html>', false)->assertSee('ISA Track Medellín');
+    }
 }

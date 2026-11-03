@@ -159,10 +159,10 @@
             var here = @json($here ? [$here['latitude'], $here['longitude']] : null);
             var dest = @json($dest ? [$dest['latitude'], $dest['longitude']] : null);
             var map = L.map('map', { zoomControl: false, attributionControl: true });
-            // CARTO (datos de OpenStreetMap) no exige Referer; OpenStreetMap queda de respaldo.
-            var tiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', maxZoom: 19, attribution: '© OpenStreetMap · © CARTO' }).addTo(map), fails = 0, ok = 0;
+            // OpenStreetMap (esta página tiene dirección web, así que lo acepta); Esri de respaldo. Ninguno pide llave.
+            var tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map), fails = 0, ok = 0;
             tiles.on('tileload', function () { ok++; });
-            tiles.on('tileerror', function () { if (++fails === 4 && !ok) { map.removeLayer(tiles); L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map); } });
+            tiles.on('tileerror', function () { if (++fails === 4 && !ok) { map.removeLayer(tiles); L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Mapa © Esri, © OpenStreetMap' }).addTo(map); } });
             var pts = [];
             if (dest) { L.circle(dest, { radius: 600, color: '#0B1F3A', weight: 2, fillOpacity: .08 }).addTo(map).bindTooltip('Tu barrio'); pts.push(dest); }
             if (here) { L.circleMarker(here, { radius: 9, color: '#fff', weight: 3, fillColor: '#00C896', fillOpacity: 1 }).addTo(map).bindTooltip('Mensajero (aprox.)', { permanent: true, direction: 'top' }); pts.push(here); }
