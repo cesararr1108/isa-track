@@ -21,7 +21,7 @@
   --danger: #D92D20;
   --s-created: #64748B; --s-prepared: #6366F1; --s-assigned: #0EA5E9; --s-in_route: #00C896;
   --s-delivered: #16A34A; --s-incident: #FFB800; --s-returned: #D92D20;
-  --map-bg: #E4EBF2; --map-river: #6FA9D6; --tile-filter: none;
+  --map-bg: #E4EBF2; --map-river: #6FA9D6;
   --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", sans-serif;
   --body: "Figtree", "Segoe UI", system-ui, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
@@ -33,7 +33,7 @@
     --side-bg: #040C17; --side-fg: #C3D1E4; --side-muted: #6E84A3; --side-hover: #0E2240;
     --accent-ink: #04140F; --accent-soft: #0B3A2F; --accent-text: #3EE0B5;
     --amber-ink: #241A00; --amber-soft: #3A2C05; --amber-text: #FFCB47; --danger: #F97066;
-    --map-bg: #0B1A2C; --map-river: #2D5E86; --tile-filter: brightness(.62) invert(1) contrast(.85) hue-rotate(195deg) saturate(.6);
+    --map-bg: #0B1A2C; --map-river: #2D5E86;
     color-scheme: dark;
   }
 }
@@ -42,7 +42,7 @@
   --side-bg: #040C17; --side-fg: #C3D1E4; --side-muted: #6E84A3; --side-hover: #0E2240;
   --accent-ink: #04140F; --accent-soft: #0B3A2F; --accent-text: #3EE0B5;
   --amber-ink: #241A00; --amber-soft: #3A2C05; --amber-text: #FFCB47; --danger: #F97066;
-  --map-bg: #0B1A2C; --map-river: #2D5E86; --tile-filter: brightness(.62) invert(1) contrast(.85) hue-rotate(195deg) saturate(.6);
+  --map-bg: #0B1A2C; --map-river: #2D5E86;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -189,7 +189,8 @@ label.f input[type="color"] { padding: 2px; height: 40px; }
 .leaflet-pane, .leaflet-tile, .leaflet-marker-icon, .leaflet-marker-shadow, .leaflet-tile-container, .leaflet-pane > svg, .leaflet-pane > canvas, .leaflet-zoom-box, .leaflet-image-layer, .leaflet-layer { position: absolute; left: 0; top: 0; }
 .leaflet-container { overflow: hidden; -webkit-tap-highlight-color: transparent; font-family: var(--body); outline-offset: 1px; }
 .leaflet-tile, .leaflet-marker-icon, .leaflet-marker-shadow { user-select: none; -webkit-user-drag: none; }
-.leaflet-tile { visibility: hidden; filter: var(--tile-filter); }
+.leaflet-tile { visibility: hidden; }
+.map-off { position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 1000; max-width: calc(100% - 24px); background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-left: 4px solid var(--amber); border-radius: 8px; padding: 6px 10px; font-size: .76rem; box-shadow: 0 2px 8px rgb(0 0 0 / .15); }
 .leaflet-tile-loaded { visibility: inherit; }
 .leaflet-container img.leaflet-tile, .leaflet-container .leaflet-marker-icon, .leaflet-container .leaflet-overlay-pane svg { max-width: none !important; max-height: none !important; }
 .leaflet-container img.leaflet-tile { width: 256px; height: 256px; }
@@ -731,12 +732,36 @@ function render() {
 }
 
 /* ---------- mapas (Leaflet + OpenStreetMap) ---------- */
+/*
+ * Calles del mapa. tile.openstreetmap.org rechaza las teselas cuando la página se abre
+ * como archivo local (file://, sin "Referer"), por eso se usa primero CARTO (datos de
+ * OpenStreetMap, no exige Referer) y OpenStreetMap queda de respaldo. Si ninguna carga
+ * (sin internet, o un visor que bloquea imágenes externas) se avisa sobre el mapa.
+ */
+const isDark = () => document.documentElement.dataset.theme === 'dark' || (document.documentElement.dataset.theme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+const TILE_SOURCES = () => [
+  { url: `https://{s}.basemaps.cartocdn.com/${isDark() ? 'dark_all' : 'rastertiles/voyager'}/{z}/{x}/{y}{r}.png`, opts: { subdomains: 'abcd', maxZoom: 20, attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · © <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>' } },
+  { url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', opts: { maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' } },
+];
+function addStreets(m, i = 0) {
+  const src = TILE_SOURCES()[i];
+  if (!src) {
+    const n = document.createElement('div'); n.className = 'map-off';
+    n.textContent = 'No se pudieron cargar las calles (sin internet o el visor bloquea imágenes externas). Las zonas, rutas y pedidos sí se muestran.';
+    m.getContainer().appendChild(n); return;
+  }
+  let loaded = 0, failed = 0;
+  const layer = L.tileLayer(src.url, src.opts).addTo(m);
+  layer.on('tileload', () => loaded++);
+  layer.on('tileerror', () => { if (++failed >= 4 && loaded === 0) { layer.off(); m.removeLayer(layer); addStreets(m, i + 1); } });
+}
+
 function lmap(id, { center = CENTER, zoom = 12, sketch = true, labels = true } = {}) {
   const el = document.getElementById(id);
   if (!el) return null;
   if (!window.L) { el.innerHTML = '<p class="empty">El mapa necesita conexión a internet (Leaflet + OpenStreetMap).</p>'; return null; }
   const m = L.map(el, { scrollWheelZoom: false }).setView(center, zoom);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(m);
+  addStreets(m);
   if (sketch) {
     // Trazo de referencia del río y barrios: se ve aunque no carguen las teselas.
     L.polyline([[6.140, -75.610], [6.170, -75.600], [6.195, -75.588], [6.215, -75.579], [6.240, -75.574], [6.265, -75.569], [6.290, -75.562]], { className: 'river', weight: 5, opacity: .8, interactive: false }).addTo(m);

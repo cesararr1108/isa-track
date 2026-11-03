@@ -159,7 +159,10 @@
             var here = @json($here ? [$here['latitude'], $here['longitude']] : null);
             var dest = @json($dest ? [$dest['latitude'], $dest['longitude']] : null);
             var map = L.map('map', { zoomControl: false, attributionControl: true });
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '© OpenStreetMap' }).addTo(map);
+            // CARTO (datos de OpenStreetMap) no exige Referer; OpenStreetMap queda de respaldo.
+            var tiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', maxZoom: 19, attribution: '© OpenStreetMap · © CARTO' }).addTo(map), fails = 0, ok = 0;
+            tiles.on('tileload', function () { ok++; });
+            tiles.on('tileerror', function () { if (++fails === 4 && !ok) { map.removeLayer(tiles); L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map); } });
             var pts = [];
             if (dest) { L.circle(dest, { radius: 600, color: '#0B1F3A', weight: 2, fillOpacity: .08 }).addTo(map).bindTooltip('Tu barrio'); pts.push(dest); }
             if (here) { L.circleMarker(here, { radius: 9, color: '#fff', weight: 3, fillColor: '#00C896', fillOpacity: 1 }).addTo(map).bindTooltip('Mensajero (aprox.)', { permanent: true, direction: 'top' }); pts.push(here); }
