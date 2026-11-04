@@ -12,3 +12,8 @@ export const initials = (name: string): string =>
     name.trim().split(/\s+/).slice(0, 2).map((w) => w[0] ?? '').join('').toUpperCase() || '?';
 
 export const timeZone = TZ;
+
+export const dateTime = (iso: string): string =>
+    new Intl.DateTimeFormat('es-CO', { timeZone: TZ, day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
+
+export const hourMinute = (d: Date): string => new Intl.DateTimeFormat('es-CO', { timeZone: TZ, hour: 'numeric', minute: '2-digit' }).format(d);

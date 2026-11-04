@@ -1,10 +1,13 @@
 <?php
 
 use App\Http\Controllers\Web\DashboardController;
+use App\Http\Controllers\Web\LiveMapController;
 use App\Http\Controllers\Web\LoginController;
 use Illuminate\Support\Facades\Route;
 use Isa\Fleet\Infrastructure\Http\Web\CarrierPageController;
+use Isa\Routing\Infrastructure\Http\Web\RoutePageController;
 use Isa\Shipping\Infrastructure\Http\PublicTrackingController;
+use Isa\Shipping\Infrastructure\Http\Web\OrderPageController;
 use Isa\Zones\Infrastructure\Http\Web\ZonePageController;
 
 /*
@@ -20,6 +23,20 @@ Route::middleware('security.headers:csp')->group(function () {
     Route::middleware(['auth', 'company.user', 'tenant'])->group(function () {
         Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
         Route::get('/', DashboardController::class)->name('panel.dashboard');
+
+        Route::get('/pedidos', [OrderPageController::class, 'index'])->middleware('permission:orders.view')->name('panel.orders.index');
+        Route::post('/pedidos', [OrderPageController::class, 'store'])->middleware('permission:orders.create')->name('panel.orders.store');
+        Route::post('/pedidos/{order}/asignar', [OrderPageController::class, 'assign'])->whereUuid('order')->middleware('permission:orders.assign')->name('panel.orders.assign');
+        Route::post('/pedidos/{order}/estado', [OrderPageController::class, 'changeStatus'])->whereUuid('order')->middleware('permission:orders.change_status')->name('panel.orders.status');
+        Route::get('/pedidos/{order}/evidencia/{kind}', [OrderPageController::class, 'evidence'])->whereUuid('order')->whereIn('kind', ['photo', 'signature'])->middleware('permission:orders.view')->name('panel.orders.evidence');
+
+        Route::get('/rutas', [RoutePageController::class, 'index'])->middleware('permission:routes.view')->name('panel.routes.index');
+        Route::post('/rutas', [RoutePageController::class, 'store'])->middleware('permission:routes.manage')->name('panel.routes.store');
+        Route::put('/rutas/{route}/paradas', [RoutePageController::class, 'reorder'])->whereUuid('route')->middleware('permission:routes.manage')->name('panel.routes.reorder');
+        Route::post('/rutas/{route}/optimizar', [RoutePageController::class, 'optimize'])->whereUuid('route')->middleware('permission:routes.manage')->name('panel.routes.optimize');
+        Route::post('/rutas/{route}/estado', [RoutePageController::class, 'changeStatus'])->whereUuid('route')->middleware('permission:routes.drive')->name('panel.routes.status');
+
+        Route::get('/mapa', LiveMapController::class)->middleware('permission:orders.view')->name('panel.live');
 
         Route::get('/transportadores', [CarrierPageController::class, 'index'])->middleware('permission:carriers.view')->name('panel.carriers.index');
         Route::post('/transportadores', [CarrierPageController::class, 'store'])->middleware('permission:carriers.create')->name('panel.carriers.store');

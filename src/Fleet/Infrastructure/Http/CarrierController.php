@@ -12,6 +12,7 @@ use Isa\Fleet\Application\ChangeCarrierPhoto\ChangeCarrierPhotoHandler;
 use Isa\Fleet\Application\GetCarrier\GetCarrierHandler;
 use Isa\Fleet\Application\ListCarriers\ListCarriersHandler;
 use Isa\Fleet\Application\RegisterCarrier\RegisterCarrierHandler;
+use Isa\Fleet\Application\ReportLocation\ReportLocationHandler;
 use Isa\Fleet\Application\SetCarrierActive\SetCarrierActiveHandler;
 use Isa\Fleet\Application\UpdateCarrier\UpdateCarrierHandler;
 use Isa\Fleet\Domain\Exception\CarrierNotFound;
@@ -67,6 +68,20 @@ final class CarrierController
         abort_if($carrierId === null, 422, 'Tu usuario no está vinculado a un transportador.');
 
         return $this->uploadPhoto($request, $carrierId, $changePhoto);
+    }
+
+    /** POST /api/me/location {latitude, longitude}: la app del mensajero reporta dónde está. */
+    public function reportMyLocation(Request $request, ReportLocationHandler $report): JsonResponse
+    {
+        $data = $request->validate([
+            'latitude' => ['required', 'numeric', 'between:-90,90'],
+            'longitude' => ['required', 'numeric', 'between:-180,180'],
+        ]);
+        $carrierId = $request->user()->carrier_id;
+        abort_if($carrierId === null, 422, 'Tu usuario no está vinculado a un transportador.');
+        $report($carrierId, (float) $data['latitude'], (float) $data['longitude']);
+
+        return new JsonResponse(status: 204);
     }
 
     /** GET /api/carriers/{id}/photo */

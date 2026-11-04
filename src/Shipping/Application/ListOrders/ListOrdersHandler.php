@@ -17,7 +17,7 @@ final class ListOrdersHandler
     ) {}
 
     /**
-     * @param  array{status?: ?string, carrier_id?: ?string, search?: ?string}  $filters
+     * @param  array{status?: ?string, carrier_id?: ?string, search?: ?string, board_since?: ?string}  $filters
      * @return array{data: list<array<string, mixed>>, meta: array{page: int, per_page: int, total: int}}
      */
     public function __invoke(array $filters, int $page = 1, int $perPage = 20): array

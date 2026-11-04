@@ -12,6 +12,7 @@ use Isa\Fleet\Domain\VehicleCapacity;
 use Isa\Fleet\Domain\VehicleType;
 use Isa\Shared\Domain\ValueObject\CarrierId;
 use Isa\Shared\Domain\ValueObject\CompanyId;
+use Isa\Shared\Domain\ValueObject\GeoPoint;
 
 final class EloquentCarrierRepository implements CarrierRepository
 {
@@ -33,6 +34,9 @@ final class EloquentCarrierRepository implements CarrierRepository
                 'capacity_kg' => $p->capacity->maxWeightKg,
                 'capacity_packages' => $p->capacity->maxPackages,
                 'photo_path' => $carrier->photoPath(),
+                'last_latitude' => $carrier->lastLocation()?->latitude,
+                'last_longitude' => $carrier->lastLocation()?->longitude,
+                'last_location_at' => $carrier->lastLocationAt(),
                 'active' => $carrier->isActive(),
             ],
         );
@@ -84,6 +88,8 @@ final class EloquentCarrierRepository implements CarrierRepository
             ),
             $row->photo_path,
             $row->active,
+            GeoPoint::fromNullable($row->last_latitude, $row->last_longitude),
+            $row->last_location_at,
         );
     }
 }

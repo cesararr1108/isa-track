@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Isa\Fleet\Domain;
 
+use DateTimeImmutable;
 use InvalidArgumentException;
 use Isa\Shared\Domain\AggregateRoot;
 use Isa\Shared\Domain\ValueObject\CarrierId;
 use Isa\Shared\Domain\ValueObject\CompanyId;
+use Isa\Shared\Domain\ValueObject\GeoPoint;
 
 /**
  * Transportador al que se le asignan pedidos: un mensajero propio o una
@@ -24,6 +26,8 @@ final class Carrier extends AggregateRoot
         private CarrierProfile $profile,
         private ?string $photoPath,
         private bool $active,
+        private ?GeoPoint $lastLocation = null,
+        private ?DateTimeImmutable $lastLocationAt = null,
     ) {
         $this->guardName($name);
     }
@@ -46,8 +50,10 @@ final class Carrier extends AggregateRoot
         CarrierProfile $profile,
         ?string $photoPath,
         bool $active,
+        ?GeoPoint $lastLocation = null,
+        ?DateTimeImmutable $lastLocationAt = null,
     ): self {
-        return new self($id, $companyId, $name, $type, $profile, $photoPath, $active);
+        return new self($id, $companyId, $name, $type, $profile, $photoPath, $active, $lastLocation, $lastLocationAt);
     }
 
     public function update(string $name, CarrierType $type, CarrierProfile $profile): void
@@ -65,6 +71,26 @@ final class Carrier extends AggregateRoot
         $this->photoPath = $path;
 
         return $previous;
+    }
+
+    /** El mensajero reporta dónde está (app del mensajero). Se ignoran reportes más viejos que el último. */
+    public function reportLocation(GeoPoint $location, DateTimeImmutable $at): void
+    {
+        if ($this->lastLocationAt !== null && $at < $this->lastLocationAt) {
+            return;
+        }
+        $this->lastLocation = $location;
+        $this->lastLocationAt = $at;
+    }
+
+    public function lastLocation(): ?GeoPoint
+    {
+        return $this->lastLocation;
+    }
+
+    public function lastLocationAt(): ?DateTimeImmutable
+    {
+        return $this->lastLocationAt;
     }
 
     public function deactivate(): void

@@ -9,6 +9,7 @@ use Isa\Companies\Application\CreateCompany\CreateCompanyHandler;
 use Isa\Fleet\Application\CarrierData;
 use Isa\Fleet\Application\ListCarriers\ListCarriersHandler;
 use Isa\Fleet\Application\RegisterCarrier\RegisterCarrierHandler;
+use Isa\Fleet\Application\ReportLocation\ReportLocationHandler;
 use Isa\Routing\Application\PlanRoute\PlanRouteCommand;
 use Isa\Routing\Application\PlanRoute\PlanRouteHandler;
 use Isa\Shared\Infrastructure\Auth\Role;
@@ -132,6 +133,9 @@ class DatabaseSeeder extends Seeder
 
             $this->command?->info("Pedido {$order->trackingCode()} → ".url('/rastreo/'.$order->trackingCode()));
         }
+
+        // Juan va en camino: su app reporta la ubicación (mapa en vivo).
+        app(ReportLocationHandler::class)($driverCarrier->value(), 6.2150, -75.5700);
 
         // Ruta programada para mañana con los pedidos pendientes (se ordena sola).
         $camila = collect(app(ListCarriersHandler::class)())->firstWhere('name', 'Camila Rendón');

@@ -26,6 +26,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     Route::get('/auth/me', [AuthController::class, 'me']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::post('/me/photo', [CarrierController::class, 'uploadMyPhoto']);
+    Route::post('/me/location', [CarrierController::class, 'reportMyLocation'])->middleware(['permission:routes.drive', 'throttle:30,1']);
 
     // Usuarios y permisos
     Route::get('/permissions', [UserController::class, 'catalog'])->middleware('permission:users.manage');

@@ -25,6 +25,11 @@ final class CarrierPresenter
             'capacity_kg' => $p->capacity->maxWeightKg,
             'capacity_packages' => $p->capacity->maxPackages,
             'has_photo' => $c->photoPath() !== null,
+            'last_location' => $c->lastLocation() === null ? null : [
+                'latitude' => $c->lastLocation()->latitude,
+                'longitude' => $c->lastLocation()->longitude,
+                'at' => $c->lastLocationAt()?->format(DATE_ATOM),
+            ],
             'active' => $c->isActive(),
         ];
     }

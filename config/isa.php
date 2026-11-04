@@ -68,9 +68,9 @@ return [
     */
     'navigation' => [
         ['key' => 'dashboard', 'group' => 'Operación', 'label' => 'Resumen', 'icon' => 'panel', 'route' => 'panel.dashboard', 'permission' => null],
-        ['key' => 'orders', 'group' => 'Operación', 'label' => 'Pedidos', 'icon' => 'orders', 'route' => null, 'permission' => 'orders.view'],
-        ['key' => 'routes', 'group' => 'Operación', 'label' => 'Rutas', 'icon' => 'routes', 'route' => null, 'permission' => 'routes.view'],
-        ['key' => 'live', 'group' => 'Operación', 'label' => 'Mapa en vivo', 'icon' => 'live', 'route' => null, 'permission' => 'orders.view'],
+        ['key' => 'orders', 'group' => 'Operación', 'label' => 'Pedidos', 'icon' => 'orders', 'route' => 'panel.orders.index', 'permission' => 'orders.view'],
+        ['key' => 'routes', 'group' => 'Operación', 'label' => 'Rutas', 'icon' => 'routes', 'route' => 'panel.routes.index', 'permission' => 'routes.view'],
+        ['key' => 'live', 'group' => 'Operación', 'label' => 'Mapa en vivo', 'icon' => 'live', 'route' => 'panel.live', 'permission' => 'orders.view'],
         ['key' => 'carriers', 'group' => 'Flota y tarifas', 'label' => 'Transportadores', 'icon' => 'carriers', 'route' => 'panel.carriers.index', 'permission' => 'carriers.view'],
         ['key' => 'zones', 'group' => 'Flota y tarifas', 'label' => 'Zonas y tarifas', 'icon' => 'zones', 'route' => 'panel.zones.index', 'permission' => 'zones.view'],
         ['key' => 'cash', 'group' => 'Finanzas', 'label' => 'Caja', 'icon' => 'cash', 'route' => null, 'permission' => 'cash.view'],

@@ -15,6 +15,10 @@ final class EloquentOrderQueries implements OrderQueries
             ->where('company_id', $companyId->value())
             ->when($filters['status'] ?? null, fn ($q, $status) => $q->where('status', $status))
             ->when($filters['carrier_id'] ?? null, fn ($q, $carrier) => $q->where('carrier_id', $carrier))
+            // Tablero del día: creados desde esa fecha o todavía abiertos.
+            ->when($filters['board_since'] ?? null, fn ($q, $since) => $q->where(fn ($q) => $q
+                ->where('created_at', '>=', $since.' 00:00:00')
+                ->orWhereNotIn('status', ['delivered', 'returned'])))
             ->when($filters['search'] ?? null, fn ($q, $term) => $q->where(function ($q) use ($term): void {
                 $like = '%'.mb_strtolower($term).'%';
                 $q->whereRaw('LOWER(tracking_code) LIKE ?', [$like])
@@ -22,6 +26,7 @@ final class EloquentOrderQueries implements OrderQueries
                     ->orWhereRaw('LOWER(recipient_name) LIKE ?', [$like]);
             }))
             ->withCount('packages')
+            ->with('zone:id,name')
             ->orderByDesc('created_at');
 
         $paginator = $query->paginate($perPage, ['*'], 'page', $page);
@@ -37,6 +42,11 @@ final class EloquentOrderQueries implements OrderQueries
                 'city' => $o->city,
                 'neighborhood' => $o->neighborhood,
                 'packages_count' => $o->packages_count,
+                'latitude' => $o->latitude,
+                'longitude' => $o->longitude,
+                'delivery_fee' => $o->delivery_fee,
+                'cash_on_delivery' => $o->cash_on_delivery,
+                'zone_name' => $o->zone?->name,
                 'promised_at' => $o->promised_at?->format(DATE_ATOM),
                 'created_at' => $o->created_at?->format(DATE_ATOM),
             ])->all(),

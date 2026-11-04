@@ -82,3 +82,24 @@ export const dotIcon = (color: string, size = 18): L.DivIcon =>
     L.divIcon({ className: 'pin-icon', html: `<span class="mk" style="--c:${color}"></span>`, iconSize: [size, size], iconAnchor: [size / 2, size / 2] });
 
 export { L };
+
+/** Marcador numerado (paradas de una ruta). */
+export const numberIcon = (n: number, color: string, dark = false): L.DivIcon =>
+    L.divIcon({
+        className: 'pin-icon',
+        html: `<span class="mk num-mk" style="--c:${color};color:${dark ? '#0B1F3A' : '#fff'}">${n}</span>`,
+        iconSize: [26, 26],
+        iconAnchor: [13, 13],
+    });
+
+/** Mensajero en el mapa (iniciales sobre azul con borde menta). */
+export const riderIcon = (initials: string): L.DivIcon =>
+    L.divIcon({ className: 'pin-icon', html: `<span class="mk rider-mk">${initials}</span>`, iconSize: [30, 30], iconAnchor: [15, 15] });
+
+/** Bodega / punto de partida. */
+export const depotIcon = (): L.DivIcon =>
+    L.divIcon({ className: 'pin-icon', html: '<span class="mk depot-mk">B</span>', iconSize: [24, 24], iconAnchor: [12, 12] });
+
+/** Escapa texto antes de ponerlo en un popup o tooltip (evita XSS con nombres o direcciones). */
+export const escapeHtml = (s: string | null | undefined): string =>
+    String(s ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch] ?? ch);

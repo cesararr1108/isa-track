@@ -15,10 +15,15 @@ Stack: **PHP 8.3 · Laravel 13 · PostgreSQL 16** · Sanctum (tokens) · PHPUnit
 
 **Colores corporativos:** azul profundo `#0B1F3A` (fondos oscuros, encabezados, menú), verde menta `#00C896` (botones principales, confirmaciones, estado "en camino") y ámbar `#FFB800` (alertas suaves, tarifas, puntos de interés). Están en `config/isa.php` (`branding`) y en la página de rastreo.
 
-## 0. Panel web (etapa 1)
+## 0. Panel web
 
-La aplicación real ya tiene **panel web** en `http://localhost:8000` (o la IP de tu servidor):
-inicio de sesión, menú según permisos, **Resumen**, **Transportadores** y **Zonas y tarifas**.
+La aplicación real tiene **panel web** en `http://localhost:8000` (o la IP de tu servidor):
+
+- **Etapa 1:** inicio de sesión, menú según permisos, Resumen, Transportadores y Zonas y tarifas.
+- **Etapa 2:** **Pedidos** (crear con ubicación en el mapa y tarifa por zona, asignar, alistar, novedad,
+  devolver, ver prueba de entrega), **Rutas** (programar con control de capacidad, ver en el mapa,
+  reordenar, optimizar, iniciar y completar) y **Mapa en vivo** (pedidos del día y última ubicación
+  de cada mensajero, se actualiza cada 15 s).
 Las secciones marcadas "Pronto" se construyen en las siguientes etapas; mientras tanto se pueden ver en `/prototipo`.
 
 **Stack (elegido por seguridad primero, luego escalabilidad):** Laravel 13 + Inertia.js + Vue 3 + TypeScript + Vite.
@@ -221,6 +226,7 @@ Todas las privadas requieren `Authorization: Bearer <token>` y `Accept: applicat
 | POST | `/api/carriers/{id}/active` | `carriers.update` | `{active}` activar / desactivar |
 | POST/GET | `/api/carriers/{id}/photo` | `carriers.update` / `carriers.view` | Foto del mensajero (multipart `photo`) |
 | POST | `/api/me/photo` | autenticado | El mensajero sube su propia foto |
+| POST | `/api/me/location` | `routes.drive` | `{latitude, longitude}`: la app del mensajero reporta dónde está (máx. 30 por minuto) |
 | GET/POST | `/api/zones` | `zones.view` / `zones.manage` | Zonas: `{name, color, delivery_fee, estimated_minutes, polygon: [[lat,lng],...]}` |
 | PUT/DELETE | `/api/zones/{id}` | `zones.manage` | Editar / borrar zona |
 | GET | `/api/zones/quote?latitude=&longitude=` | `zones.view` | Tarifa del domicilio en ese punto |

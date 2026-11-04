@@ -15,6 +15,13 @@ interface RouteOrders
      */
     public function find(CompanyId $companyId, array $orderIds): array;
 
+    /**
+     * Pedidos que se pueden programar: estado creado, alistado, asignado o novedad, y con coordenadas.
+     *
+     * @return list<RouteOrder>
+     */
+    public function routable(CompanyId $companyId, int $limit): array;
+
     /** Asigna el pedido al mensajero (si no lo tiene ya). */
     public function assign(string $orderId, string $carrierId, ?string $byUserId): void;
 }

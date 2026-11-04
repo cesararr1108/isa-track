@@ -61,7 +61,7 @@ const t = computed(() => props.summary?.totals);
         </template>
         <p v-else class="panel pad muted">Tu usuario no tiene el permiso de ver reportes, por eso no se muestran cifras.</p>
 
-        <p class="alert">Este panel se está construyendo por etapas. Ya funcionan <b>Transportadores</b> y <b>Zonas y tarifas</b>; las secciones marcadas "Pronto" siguen en el prototipo (<a href="/prototipo">/prototipo</a>).</p>
+        <p class="alert">Este panel se está construyendo por etapas. Ya funcionan <b>Pedidos</b>, <b>Rutas</b>, <b>Mapa en vivo</b>, <b>Transportadores</b> y <b>Zonas y tarifas</b>; las secciones marcadas "Pronto" siguen en el prototipo (<a href="/prototipo">/prototipo</a>).</p>
     </AppLayout>
 </template>
 

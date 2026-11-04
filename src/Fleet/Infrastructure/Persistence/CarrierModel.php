@@ -20,5 +20,8 @@ final class CarrierModel extends Model
         'active' => 'boolean',
         'capacity_kg' => 'float',
         'capacity_packages' => 'integer',
+        'last_latitude' => 'float',
+        'last_longitude' => 'float',
+        'last_location_at' => 'immutable_datetime',
     ];
 }

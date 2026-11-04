@@ -51,6 +51,21 @@ final class ShippingRouteOrders implements RouteOrders
         return $result;
     }
 
+    public function routable(CompanyId $companyId, int $limit): array
+    {
+        $ids = OrderModel::query()
+            ->where('company_id', $companyId->value())
+            ->whereIn('status', ['created', 'prepared', 'assigned', 'incident'])
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->orderBy('created_at')
+            ->limit($limit)
+            ->pluck('id')
+            ->all();
+
+        return array_values($this->find($companyId, $ids));
+    }
+
     public function assign(string $orderId, string $carrierId, ?string $byUserId): void
     {
         $current = OrderModel::query()->whereKey($orderId)->first(['carrier_id', 'status']);
