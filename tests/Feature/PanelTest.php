@@ -35,6 +35,18 @@ final class PanelTest extends TestCase
         $res->assertHeader('X-Frame-Options', 'DENY')->assertHeader('X-Content-Type-Options', 'nosniff');
     }
 
+    public function test_history_is_encrypted_only_in_a_secure_context(): void
+    {
+        // http://IP-del-servidor: el navegador no permite cifrar, así que no se pide.
+        $plain = $this->get('http://192.168.2.68/login')->assertOk();
+        self::assertArrayNotHasKey('encryptHistory', $plain->viewData('page'));
+        $plain->assertHeaderMissing('Cross-Origin-Opener-Policy');
+
+        $secure = $this->get('https://isatrack.co/login')->assertOk();
+        self::assertTrue($secure->viewData('page')['encryptHistory'] ?? false);
+        $secure->assertHeader('Strict-Transport-Security');
+    }
+
     public function test_login_regenerates_session_and_logout_invalidates_it(): void
     {
         $user = $this->user($this->company('Tienda Uno'), Role::CompanyAdmin);

@@ -6,7 +6,9 @@ namespace App\Http\Middleware;
 
 use App\Http\Controllers\UserPresenter;
 use App\Models\User;
+use Closure;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 use Inertia\Middleware;
 use Isa\Companies\Infrastructure\Persistence\CompanyModel;
 use Isa\Shared\Infrastructure\Auth\PermissionChecker;
@@ -24,6 +26,21 @@ final class HandleInertiaRequests extends Middleware
         private readonly UserPresenter $users,
         private readonly PermissionChecker $permissions,
     ) {}
+
+    public function handle(Request $request, Closure $next)
+    {
+        // El historial cifrado usa la criptografía del navegador, que solo existe en un
+        // "contexto seguro" (HTTPS o localhost). En http://IP-del-servidor fallaría y la
+        // página se quedaría cargando, así que ahí se desactiva.
+        Inertia::encryptHistory(config('inertia.history.encrypt') && self::isSecureContext($request));
+
+        return parent::handle($request, $next);
+    }
+
+    public static function isSecureContext(Request $request): bool
+    {
+        return $request->isSecure() || in_array($request->getHost(), ['localhost', '127.0.0.1', '::1'], true);
+    }
 
     /** @return array<string, mixed> */
     public function share(Request $request): array

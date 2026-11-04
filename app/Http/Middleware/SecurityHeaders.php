@@ -37,8 +37,9 @@ final class SecurityHeaders
         // Enviar solo el origen a otros sitios (los mapas lo necesitan; nunca la ruta completa).
         $h->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         $h->set('Permissions-Policy', 'geolocation=(self), camera=(self), microphone=(), payment=(), usb=()');
-        $h->set('Cross-Origin-Opener-Policy', 'same-origin');
+        // Estos dos solo tienen efecto con HTTPS (sin HTTPS el navegador los ignora con una advertencia).
         if ($request->isSecure()) {
+            $h->set('Cross-Origin-Opener-Policy', 'same-origin');
             $h->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
         }
         if ($mode === 'csp') {
