@@ -47,6 +47,15 @@ final class PanelTest extends TestCase
         $secure->assertHeader('Strict-Transport-Security');
     }
 
+    public function test_validation_messages_are_in_spanish(): void
+    {
+        $this->post('/login', ['email' => '', 'password' => ''])->assertSessionHasErrors(['email' => 'El campo correo es obligatorio.']);
+        $this->postJson('/api/auth/login', ['email' => 'no-es-correo'])
+            ->assertJsonPath('errors.email.0', 'El campo correo debe ser un correo electrónico válido.')
+            ->assertJsonPath('errors.password.0', 'El campo contraseña es obligatorio.')
+            ->assertJsonPath('message', 'El campo correo debe ser un correo electrónico válido. (y 1 error más)');
+    }
+
     public function test_login_regenerates_session_and_logout_invalidates_it(): void
     {
         $user = $this->user($this->company('Tienda Uno'), Role::CompanyAdmin);

@@ -212,6 +212,8 @@ Lo único de Laravel que necesitas para este proyecto:
 
 ## 5. API
 
+> **Manual completo de la API:** [`docs/API.md`](docs/API.md) (también en PDF: `docs/manual-api.pdf`), con ejemplos reales de cada endpoint, errores, permisos y un flujo completo de integración.
+
 Todas las privadas requieren `Authorization: Bearer <token>` y `Accept: application/json`.
 
 | Método | Ruta | Permiso | Descripción |

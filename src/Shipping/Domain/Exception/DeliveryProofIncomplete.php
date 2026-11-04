@@ -8,10 +8,18 @@ use Isa\Shared\Domain\DomainException;
 
 final class DeliveryProofIncomplete extends DomainException
 {
-    /** @param list<string> $missing */
+    private const LABELS = [
+        'receiver_name' => 'nombre de quien recibe',
+        'photo' => 'foto',
+        'signature' => 'firma',
+        'location' => 'ubicación GPS',
+    ];
+
+    /** @param list<string> $missing claves técnicas (receiver_name, photo, signature, location) */
     public function __construct(public readonly array $missing)
     {
-        parent::__construct('Falta información en la prueba de entrega: '.implode(', ', $missing).'.');
+        parent::__construct('Falta información en la prueba de entrega: '
+            .implode(', ', array_map(fn (string $m) => self::LABELS[$m] ?? $m, $missing)).'.');
     }
 
     public function errorCode(): string
