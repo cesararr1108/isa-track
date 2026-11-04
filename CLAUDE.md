@@ -148,6 +148,10 @@ git pull origin main && composer install --no-dev --optimize-autoloader && npm c
 
 Producción: `APP_ENV=production`, `APP_DEBUG=false`. Con HTTPS: `SESSION_SECURE_COOKIE=true` y `APP_URL=https://…`. Permisos: `chown -R www-data:www-data storage bootstrap/cache`. Las ramas de trabajo se suben también a `main` cuando el usuario lo pide.
 
-## 9. Pendiente
+## 9. Marketing
+
+`marketing/reel-promo/`: reel de Instagram (video, portada, animación fuente, música original y mezcla). Para la **voz colombiana con IA** (Azure `es-CO-SalomeNeural` / `es-CO-GonzaloNeural`): requiere en el entorno `AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION` y el dominio `<region>.tts.speech.microsoft.com` permitido; luego `python3 marketing/reel-promo/hacer_reel_con_voz.py --voz salome`. Ver su README. Si el usuario pide "el reel con Salomé", es esto.
+
+## 10. Pendiente
 
 App del mensajero en el celular (PWA o nativa: entrega con foto/firma y envío de GPS a `/api/me/location`), WhatsApp real (`WhatsAppCustomerNotifier` + colas Redis), tiempo real con Reverb, 2FA para administradores, PostGIS para consultas por zona, importación desde Excel/Shopify reutilizando `CreateOrderHandler`, etiquetas QR por paquete.

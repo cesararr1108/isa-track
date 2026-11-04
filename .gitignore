@@ -25,3 +25,8 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Reel promocional: archivos intermedios que se regeneran
+/marketing/reel-promo/frames/
+/marketing/reel-promo/*.wav
+/marketing/reel-promo/__pycache__/

@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<style>
+@font-face { font-family: Display; src: url(bricolage-grotesque-latin-800-normal.woff2) format('woff2'); font-weight: 800; }
+@font-face { font-family: Body; src: url(figtree-latin-wght-normal.woff2) format('woff2'); font-weight: 300 900; }
+:root { --navy: #0B1F3A; --navy2: #132C52; --mint: #00C896; --amber: #FFB800; --bg: #F2F5F9; --ink: #0B1F3A; }
+* { box-sizing: border-box; margin: 0; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--navy); font-family: Body, sans-serif; }
+#stage { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: var(--navy); }
+.scene { position: absolute; inset: 0; opacity: 0; animation: sIn .45s ease-out var(--in) both, sOut .45s ease-in calc(var(--out) - .45s) forwards; }
+@keyframes sIn { from { opacity: 0; transform: scale(1.04); } to { opacity: 1; transform: none; } }
+@keyframes sOut { to { opacity: 0; transform: scale(.97); } }
+.a { animation-fill-mode: both; animation-duration: .6s; animation-timing-function: cubic-bezier(.2,.8,.2,1); }
+.up { animation-name: up; } @keyframes up { from { opacity: 0; transform: translateY(70px); } to { opacity: 1; transform: none; } }
+.pop { animation-name: pop; } @keyframes pop { 0% { opacity: 0; transform: scale(.6); } 70% { transform: scale(1.06); } 100% { opacity: 1; transform: scale(1); } }
+.left { animation-name: left; } @keyframes left { from { opacity: 0; transform: translateX(-120px); } to { opacity: 1; transform: none; } }
+.right { animation-name: right; } @keyframes right { from { opacity: 0; transform: translateX(120px); } to { opacity: 1; transform: none; } }
+.fade { animation-name: fade; } @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+h1, .big { font-family: Display, sans-serif; font-weight: 800; letter-spacing: -0.02em; line-height: 1.02; }
+.pad { padding: 0 90px; }
+.kicker { font-size: 34px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--mint); }
+.mint { color: var(--mint); } .amber { color: var(--amber); }
+
+/* S1 */
+.s1 h1 { position: absolute; top: 300px; left: 90px; right: 90px; font-size: 128px; color: #fff; }
+.bubble { position: absolute; left: 90px; background: #fff; color: var(--ink); font-size: 46px; font-weight: 700; padding: 30px 40px; border-radius: 40px 40px 40px 10px; box-shadow: 0 20px 50px rgb(0 0 0 / .35); display: flex; gap: 22px; align-items: center; }
+.bubble .ic { width: 64px; height: 64px; border-radius: 50%; background: var(--amber); display: grid; place-items: center; flex: none; }
+.bubble.r { left: auto; right: 90px; border-radius: 40px 40px 10px 40px; background: var(--navy2); color: #fff; }
+.calls { position: absolute; bottom: 230px; left: 90px; font-size: 40px; color: #B9C7DB; font-weight: 600; }
+.calls b { color: var(--amber); font-size: 72px; font-family: Display; display: block; }
+
+/* S2 */
+.s2 { background: var(--bg); }
+.s2 h1 { position: absolute; top: 220px; left: 90px; right: 90px; font-size: 100px; color: var(--ink); }
+.pain { position: absolute; left: 90px; right: 90px; background: #fff; border-radius: 36px; padding: 40px 46px; display: flex; gap: 34px; align-items: center; box-shadow: 0 16px 40px rgb(11 31 58 / .12); border-left: 14px solid var(--amber); }
+.pain .n { font-family: Display; font-size: 92px; color: var(--amber); width: 90px; text-align: center; }
+.pain b { display: block; font-size: 52px; color: var(--ink); font-family: Display; }
+.pain span { font-size: 36px; color: #55667E; }
+
+/* S3 */
+.s3 { display: grid; place-items: center; text-align: center; background: radial-gradient(circle at 50% 42%, #173A66 0, var(--navy) 60%); }
+.logo { width: 300px; height: 300px; margin: 0 auto 60px; }
+.logo path { stroke-dasharray: 60; stroke-dashoffset: 60; animation: draw 1s ease-out calc(var(--in) + .5s) forwards; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+.s3 h1 { font-size: 170px; color: #fff; }
+.s3 p { font-size: 58px; color: var(--mint); font-weight: 700; margin-top: 26px; }
+
+/* tarjetas con capturas */
+.cap { position: absolute; top: 210px; left: 90px; right: 90px; }
+.cap h1 { font-size: 104px; color: #fff; }
+.cap p { font-size: 44px; color: #B9C7DB; margin-top: 26px; line-height: 1.3; font-weight: 500; }
+.shot { position: absolute; left: 50px; right: 50px; border-radius: 30px; overflow: hidden; box-shadow: 0 40px 90px rgb(0 0 0 / .5); border: 6px solid rgb(255 255 255 / .12); background: #fff; }
+.shot img { display: block; width: 100%; }
+.tag { position: absolute; background: var(--mint); color: var(--navy); font-weight: 800; font-size: 40px; padding: 18px 30px; border-radius: 999px; box-shadow: 0 16px 36px rgb(0 0 0 / .35); }
+.tag.amber { background: var(--amber); }
+
+/* S4 mapa */
+.s4 { background: var(--bg); }
+.s4 .cap h1 { color: var(--ink); }
+.s4 .cap p { color: #55667E; }
+.mapbox { position: absolute; left: 60px; right: 60px; top: 680px; height: 1060px; border-radius: 40px; overflow: hidden; background: #E2EAF3; box-shadow: 0 30px 70px rgb(11 31 58 / .2); }
+.mapbox svg { width: 100%; height: 100%; }
+.route { stroke-dasharray: 2600; stroke-dashoffset: 2600; animation: draw2 2.2s ease-in-out calc(var(--in) + .9s) forwards; }
+@keyframes draw2 { to { stroke-dashoffset: 0; } }
+.rider { offset-path: path('M 470 960 C 430 860 300 820 270 700 S 380 520 520 470 S 760 330 690 190'); offset-rotate: 0deg; animation: ride 3.2s ease-in-out calc(var(--in) + 1.2s) both; }
+@keyframes ride { from { offset-distance: 0%; } to { offset-distance: 100%; } }
+
+/* S7 teléfono */
+.phone { position: absolute; left: 50%; top: 600px; width: 620px; height: 1290px; margin-left: -310px; border-radius: 80px; background: #050B16; padding: 22px; box-shadow: 0 50px 100px rgb(0 0 0 / .55); }
+.phone .screen { width: 100%; height: 100%; border-radius: 60px; overflow: hidden; background: #fff; }
+.phone img { width: 100%; display: block; }
+
+/* S8 */
+.s8 { text-align: center; background: radial-gradient(circle at 50% 30%, #173A66 0, var(--navy) 65%); }
+.s8 .logo { margin-top: 300px; width: 220px; height: 220px; }
+.s8 .logo path { animation: none; stroke-dashoffset: 0; }
+.s8 h1 { font-size: 112px; color: #fff; padding: 0 70px; }
+.cta { display: inline-block; margin-top: 70px; background: var(--mint); color: var(--navy); font-family: Display; font-size: 84px; padding: 34px 70px; border-radius: 999px; box-shadow: 0 20px 60px rgb(0 200 150 / .35); }
+.s8 .sub { font-size: 46px; color: #B9C7DB; margin-top: 50px; font-weight: 600; }
+.s8 .feat { margin-top: 90px; display: flex; justify-content: center; gap: 22px; flex-wrap: wrap; padding: 0 60px; }
+.s8 .feat span { font-size: 34px; color: #fff; border: 3px solid rgb(255 255 255 / .2); padding: 14px 28px; border-radius: 999px; font-weight: 700; }
+.pulse { animation: pulse 1.2s ease-in-out calc(var(--in) + 1.4s) 3 both; }
+@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.07); } }
+</style>
+</head>
+<body>
+<div id="stage">
+
+  <!-- S1 · El dolor -->
+  <section class="scene s1" style="--in: 0s; --out: 3.8s">
+    <h1 class="a up" style="animation-delay: .1s">¿Dónde va<br><span class="amber">el pedido?</span></h1>
+    <div class="bubble a left" style="top: 760px; animation-delay: .7s"><span class="ic"><svg width="34" height="34" viewBox="0 0 24 24" fill="#0B1F3A"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1z"/></svg></span>¿Ya salió mi pedido?</div>
+    <div class="bubble r a right" style="top: 960px; animation-delay: 1.3s">Ya casi llego…</div>
+    <div class="bubble a left" style="top: 1160px; animation-delay: 1.9s"><span class="ic"><svg width="34" height="34" viewBox="0 0 24 24" fill="#0B1F3A"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1z"/></svg></span>¿Por dónde va?</div>
+    <div class="bubble r a right" style="top: 1360px; animation-delay: 2.5s">Ya casi llego…</div>
+    <div class="calls a fade" style="animation-delay: 2.9s"><b>Y así todo el día.</b>Llamadas en vez de despachar.</div>
+  </section>
+
+  <!-- S2 · Más dolores -->
+  <section class="scene s2" style="--in: 3.8s; --out: 7.6s">
+    <h1 class="a up" style="animation-delay: 4s">Si tienes mensajeros,<br>esto te suena:</h1>
+    <div class="pain a left" style="top: 720px; animation-delay: 4.5s"><span class="n">1</span><div><b>Llamadas todo el día</b><span>para saber dónde va cada pedido</span></div></div>
+    <div class="pain a left" style="top: 1010px; animation-delay: 5.1s"><span class="n">2</span><div><b>"No me ha llegado"</b><span>y no tienes cómo demostrar la entrega</span></div></div>
+    <div class="pain a left" style="top: 1300px; animation-delay: 5.7s"><span class="n">3</span><div><b>La caja no cuadra</b><span>efectivo, Nequi, datáfono… y falta plata</span></div></div>
+  </section>
+
+  <!-- S3 · Marca -->
+  <section class="scene s3" style="--in: 7.6s; --out: 10.6s">
+    <div>
+      <svg class="logo a pop" style="animation-delay: 7.8s" viewBox="0 0 34 34"><rect width="34" height="34" rx="9" fill="#00C896"/><path d="M9 22c3.4-6.8 6.2-10.2 7.9-10.2s2.8 2.3 2.8 4.5-1.7 4.5-1.7 4.5 4-1.1 6.8-6.8" fill="none" stroke="#0B1F3A" stroke-width="2.6" stroke-linecap="round" style="--in: 7.6s"/><circle cx="25.5" cy="12.5" r="2.5" fill="#FFB800"/></svg>
+      <h1 class="a up" style="animation-delay: 8.3s">ISA Track</h1>
+      <p class="a up" style="animation-delay: 8.8s">Tu despacho bajo control</p>
+    </div>
+  </section>
+
+  <!-- S4 · Rutas y zonas -->
+  <section class="scene s4" style="--in: 10.6s; --out: 15.4s">
+    <div class="cap">
+      <div class="kicker a fade" style="animation-delay: 10.7s">Rutas y zonas</div>
+      <h1 class="a up" style="animation-delay: 10.8s">La ruta se<br>ordena sola</h1>
+      <p class="a up" style="animation-delay: 11.1s">Revisa la capacidad del vehículo y cobra el domicilio según la zona.</p>
+    </div>
+    <div class="mapbox a fade" style="animation-delay: 10.9s">
+      <svg viewBox="0 0 960 1060">
+        <rect width="960" height="1060" fill="#E2EAF3"/>
+        <g stroke="#fff" stroke-width="14" fill="none" stroke-linecap="round" opacity=".9">
+          <path d="M0 300 L960 260"/><path d="M0 620 L960 580"/><path d="M0 880 L960 900"/>
+          <path d="M180 0 L240 1060"/><path d="M640 0 L600 1060"/><path d="M820 0 L860 1060"/>
+        </g>
+        <path d="M330 1060 C 380 820 420 600 470 420 S 560 120 600 0" stroke="#7FB4DE" stroke-width="30" fill="none" stroke-linecap="round"/>
+        <polygon points="560,330 900,300 930,560 600,600" fill="#00C896" fill-opacity=".18" stroke="#00C896" stroke-width="5"/>
+        <polygon points="60,360 400,340 420,620 90,660" fill="#3B82F6" fill-opacity=".16" stroke="#3B82F6" stroke-width="5"/>
+        <polygon points="100,700 420,680 440,960 120,990" fill="#A855F7" fill-opacity=".16" stroke="#A855F7" stroke-width="5"/>
+        <polygon points="560,60 900,40 900,250 590,270" fill="#FFB800" fill-opacity=".2" stroke="#FFB800" stroke-width="5"/>
+        <g font-family="Body" font-weight="800" font-size="30">
+          <g class="a pop" style="animation-delay: 11.4s"><rect x="660" y="420" width="190" height="54" rx="12" fill="#FFB800"/><text x="755" y="457" text-anchor="middle" fill="#3A2A00">$8.000</text></g>
+          <g class="a pop" style="animation-delay: 11.6s"><rect x="150" y="470" width="190" height="54" rx="12" fill="#FFB800"/><text x="245" y="507" text-anchor="middle" fill="#3A2A00">$7.000</text></g>
+          <g class="a pop" style="animation-delay: 11.8s"><rect x="180" y="800" width="190" height="54" rx="12" fill="#FFB800"/><text x="275" y="837" text-anchor="middle" fill="#3A2A00">$7.500</text></g>
+          <g class="a pop" style="animation-delay: 12s"><rect x="650" y="130" width="190" height="54" rx="12" fill="#FFB800"/><text x="745" y="167" text-anchor="middle" fill="#3A2A00">$6.000</text></g>
+        </g>
+        <path class="route" style="--in: 10.6s" d="M 470 960 C 430 860 300 820 270 700 S 380 520 520 470 S 760 330 690 190" stroke="#0B1F3A" stroke-width="12" fill="none" stroke-linecap="round" stroke-dasharray="26 18"/>
+        <g font-family="Body" font-weight="900" font-size="36" text-anchor="middle">
+          <g class="a pop" style="animation-delay: 11.2s"><rect x="440" y="930" width="62" height="62" rx="14" fill="#FFB800"/><text x="471" y="974" fill="#3A2A00">B</text></g>
+          <g class="a pop" style="animation-delay: 12.2s"><circle cx="270" cy="700" r="36" fill="#0B1F3A" stroke="#fff" stroke-width="7"/><text x="270" y="713" fill="#fff">1</text></g>
+          <g class="a pop" style="animation-delay: 12.9s"><circle cx="520" cy="470" r="36" fill="#0B1F3A" stroke="#fff" stroke-width="7"/><text x="520" y="483" fill="#fff">2</text></g>
+          <g class="a pop" style="animation-delay: 13.6s"><circle cx="690" cy="190" r="36" fill="#0B1F3A" stroke="#fff" stroke-width="7"/><text x="690" y="203" fill="#fff">3</text></g>
+        </g>
+        <g class="rider" style="--in: 10.6s"><rect x="-30" y="-30" width="60" height="60" rx="14" fill="#0B1F3A" stroke="#00C896" stroke-width="7"/><text x="0" y="11" text-anchor="middle" font-family="Body" font-weight="900" font-size="28" fill="#fff">JP</text></g>
+      </svg>
+    </div>
+    <div class="tag a pop" style="top: 1640px; left: 110px; animation-delay: 13.8s">3 paradas · 13,6 km</div>
+  </section>
+
+  <!-- S5 · Pedidos -->
+  <section class="scene s5" style="--in: 15.4s; --out: 19.2s">
+    <div class="cap">
+      <div class="kicker a fade" style="animation-delay: 15.5s">Pedidos</div>
+      <h1 class="a up" style="animation-delay: 15.6s">Cada pedido,<br>en tiempo real</h1>
+      <p class="a up" style="animation-delay: 15.9s">Estado, mensajero, historial y prueba de entrega con foto y firma.</p>
+    </div>
+    <div class="shot a up" style="top: 780px; left: 90px; right: 90px; animation-delay: 16.1s"><img src="shots/orders_crop.png"></div>
+    <div class="tag a pop" style="top: 1700px; right: 70px; animation-delay: 17s">Estado de cada pedido</div>
+    <div class="tag amber a pop" style="top: 1700px; left: 70px; animation-delay: 17.4s">Tarifa por zona</div>
+  </section>
+
+  <!-- S6 · Caja -->
+  <section class="scene s6" style="--in: 19.2s; --out: 23s">
+    <div class="cap">
+      <div class="kicker a fade" style="animation-delay: 19.3s">Caja</div>
+      <h1 class="a up" style="animation-delay: 19.4s">La caja<br><span class="mint">cuadra sola</span></h1>
+      <p class="a up" style="animation-delay: 19.7s">Efectivo, Nequi, Daviplata y datáfono por mensajero. Si falta plata, queda registrado.</p>
+    </div>
+    <div class="shot a up" style="top: 900px; animation-delay: 19.9s"><img src="shots/cash_crop.png"></div>
+    <div class="tag a pop" style="top: 1500px; left: 90px; animation-delay: 20.8s">Efectivo que debe entregar</div><div class="tag amber a pop" style="top: 1620px; right: 90px; animation-delay: 21.2s">Faltantes con nota</div>
+  </section>
+
+  <!-- S7 · Cliente -->
+  <section class="scene s7" style="--in: 23s; --out: 26.8s">
+    <div class="cap" style="top: 170px">
+      <div class="kicker a fade" style="animation-delay: 23.1s">Para tu cliente</div>
+      <h1 class="a up" style="animation-delay: 23.2s; font-size: 96px">Tu cliente se<br>rastrea solo</h1>
+    </div>
+    <div class="phone a up" style="animation-delay: 23.5s"><div class="screen"><img src="shots/tracking_phone.png"></div></div>
+    <div class="tag a pop" style="top: 820px; right: 40px; animation-delay: 24.4s">Foto y placa</div>
+    <div class="tag amber a pop" style="top: 1500px; left: 40px; animation-delay: 24.9s">Sin llamadas</div>
+  </section>
+
+  <!-- S8 · Llamado a la acción -->
+  <section class="scene s8" style="--in: 26.8s; --out: 99s">
+    <svg class="logo a pop" style="animation-delay: 26.9s" viewBox="0 0 34 34"><rect width="34" height="34" rx="9" fill="#00C896"/><path d="M9 22c3.4-6.8 6.2-10.2 7.9-10.2s2.8 2.3 2.8 4.5-1.7 4.5-1.7 4.5 4-1.1 6.8-6.8" fill="none" stroke="#0B1F3A" stroke-width="2.6" stroke-linecap="round"/><circle cx="25.5" cy="12.5" r="2.5" fill="#FFB800"/></svg>
+    <h1 class="a up" style="animation-delay: 27.2s">¿Tienes<br>mensajeros propios?</h1>
+    <div><span class="cta a pop pulse" style="--in: 26.8s; animation-delay: 27.7s">Escribe PILOTO</span></div>
+    <div class="sub a fade" style="animation-delay: 28.2s">y te mostramos cómo quedaría tu despacho</div>
+    <div class="feat a up" style="animation-delay: 28.6s"><span>Rutas</span><span>Mapa en vivo</span><span>Prueba de entrega</span><span>Caja</span><span>Reportes</span></div>
+    <div class="sub a fade" style="animation-delay: 29.2s; margin-top: 110px; font-size: 38px">ISA Track · Hecho en Medellín</div>
+  </section>
+</div>
+<script>
+  // Control del tiempo para renderizar cuadro por cuadro.
+  window.setTime = (t) => { document.getAnimations().forEach(a => { a.pause(); a.currentTime = t * 1000; }); };
+  window.setTime(0);
+</script>
+</body>
+</html>
