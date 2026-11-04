@@ -71,7 +71,11 @@ class DatabaseSeeder extends Seeder
             app(SaveZoneHandler::class)(new SaveZoneCommand($name, $color, $polygon, $fee, $minutes));
         }
 
-        User::factory()->create(['name' => 'Superadmin', 'email' => 'super@isa.test', 'role' => Role::SuperAdmin]);
+        // Sin factories: así el seeder funciona en producción (composer install --no-dev no trae Faker).
+        $demoUser = fn (array $attrs) => User::query()->create($attrs + ['password' => 'password', 'active' => true])
+            ->forceFill(['email_verified_at' => now()])->save();
+
+        $demoUser(['name' => 'Superadmin', 'email' => 'super@isa.test', 'role' => Role::SuperAdmin]);
         $users = [
             ['Ana Admin', 'admin@demo.test', Role::CompanyAdmin, null],
             ['Diego Despacho', 'despacho@demo.test', Role::Dispatcher, null],
@@ -79,7 +83,7 @@ class DatabaseSeeder extends Seeder
             ['Gloria Gerencia', 'gerencia@demo.test', Role::Viewer, null],
         ];
         foreach ($users as [$name, $email, $role, $carrierId]) {
-            User::factory()->create([
+            $demoUser([
                 'name' => $name, 'email' => $email, 'role' => $role,
                 'company_id' => $companyId->value(), 'carrier_id' => $carrierId,
             ]);
