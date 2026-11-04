@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\UserManagement;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Isa\Shared\Application\TenantContext;
 use Isa\Shared\Infrastructure\Auth\PermissionChecker;
 use Isa\Shared\Infrastructure\Auth\Role;
@@ -52,112 +52,18 @@ final class UserController
         return new JsonResponse(['data' => $users->map(fn (User $u) => $this->presenter->toArray($u))->values()]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, UserManagement $users): JsonResponse
     {
-        $data = $this->validated($request, null);
+        $data = $request->validate($users->rules(null), [], $users->attributes());
 
-        $user = User::query()->create([
-            'company_id' => $this->tenant->companyId()->value(),
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'password' => $data['password'],
-            'phone' => $data['phone'] ?? null,
-            'role' => $data['role'],
-            'carrier_id' => $data['carrier_id'] ?? null,
-            'permissions' => $data['extra_permissions'] ?? [],
-            'revoked_permissions' => $data['revoked_permissions'] ?? [],
-            'active' => $data['active'] ?? true,
-        ]);
-
-        return new JsonResponse(['data' => $this->presenter->toArray($user->refresh())], 201);
+        return new JsonResponse(['data' => $this->presenter->toArray($users->create($data))], 201);
     }
 
-    public function update(Request $request, string $user): JsonResponse
+    public function update(Request $request, string $user, UserManagement $users): JsonResponse
     {
-        $model = $this->find($user);
-        $data = $this->validated($request, $model);
+        $model = $users->find($user);
+        $data = $request->validate($users->rules($model), [], $users->attributes());
 
-        if ($model->id === $request->user()->id && (($data['active'] ?? true) === false)) {
-            abort(422, 'No puedes desactivar tu propio usuario.');
-        }
-
-        $model->fill(array_filter([
-            'name' => $data['name'] ?? null,
-            'email' => $data['email'] ?? null,
-            'phone' => array_key_exists('phone', $data) ? $data['phone'] : null,
-            'role' => $data['role'] ?? null,
-        ], fn ($v) => $v !== null));
-        if (! empty($data['password'])) {
-            $model->password = $data['password'];
-        }
-        foreach (['carrier_id', 'active'] as $field) {
-            if (array_key_exists($field, $data)) {
-                $model->{$field} = $data[$field];
-            }
-        }
-        if (array_key_exists('extra_permissions', $data)) {
-            $model->permissions = array_values(array_unique($data['extra_permissions'] ?? []));
-        }
-        if (array_key_exists('revoked_permissions', $data)) {
-            $model->revoked_permissions = array_values(array_unique($data['revoked_permissions'] ?? []));
-        }
-        if ($model->role !== Role::Driver) {
-            $model->carrier_id = null;
-        }
-        $model->save();
-
-        // Si le quitan el acceso, se cierran sus sesiones.
-        if ($model->active === false) {
-            $model->tokens()->delete();
-        }
-
-        return new JsonResponse(['data' => $this->presenter->toArray($model->refresh())]);
-    }
-
-    private function find(string $id): User
-    {
-        return User::query()
-            ->where('company_id', $this->tenant->companyId()->value())
-            ->findOrFail($id);
-    }
-
-    /** @return array<string, mixed> */
-    private function validated(Request $request, ?User $existing): array
-    {
-        $creating = $existing === null;
-        $catalog = array_keys(config('isa.permissions'));
-        $assignableRoles = array_map(fn (Role $r) => $r->value, array_filter(Role::cases(), fn (Role $r) => $r !== Role::SuperAdmin));
-        $companyId = $this->tenant->companyId()->value();
-
-        $data = $request->validate([
-            'name' => [$creating ? 'required' : 'sometimes', 'string', 'max:150'],
-            'email' => [$creating ? 'required' : 'sometimes', 'email', 'max:150', Rule::unique('users', 'email')->ignore($existing?->id)],
-            'password' => [$creating ? 'required' : 'nullable', 'string', 'min:8', 'max:100'],
-            'phone' => ['nullable', 'string', 'max:30'],
-            'role' => [$creating ? 'required' : 'sometimes', Rule::in($assignableRoles)],
-            'carrier_id' => ['nullable', 'uuid', Rule::exists('carriers', 'id')->where('company_id', $companyId)],
-            'active' => ['sometimes', 'boolean'],
-            'extra_permissions' => ['sometimes', 'nullable', 'array'],
-            'extra_permissions.*' => ['string', Rule::in($catalog)],
-            'revoked_permissions' => ['sometimes', 'nullable', 'array'],
-            'revoked_permissions.*' => ['string', Rule::in($catalog)],
-        ], [
-            'extra_permissions.*.in' => 'El permiso :input no existe.',
-            'revoked_permissions.*.in' => 'El permiso :input no existe.',
-        ]);
-
-        $role = $data['role'] ?? $existing?->role->value;
-        $carrier = array_key_exists('carrier_id', $data) ? $data['carrier_id'] : $existing?->carrier_id;
-        if ($role === Role::Driver->value && $carrier === null) {
-            abort(422, 'Un usuario mensajero debe estar vinculado a un transportador (carrier_id).');
-        }
-        if ($carrier !== null && User::query()
-            ->where('carrier_id', $carrier)
-            ->when($existing, fn ($q) => $q->where('id', '!=', $existing->id))
-            ->exists()) {
-            abort(422, 'Ese transportador ya tiene un usuario.');
-        }
-
-        return $data;
+        return new JsonResponse(['data' => $this->presenter->toArray($users->update($model, $data, (string) $request->user()->id))]);
     }
 }

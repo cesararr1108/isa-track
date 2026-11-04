@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Web;
 
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -12,6 +13,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Isa\Shared\Infrastructure\Audit\AuditLog;
 
 /**
  * Inicio de sesión del panel con sesión de servidor (cookie httpOnly + CSRF).
@@ -26,7 +28,7 @@ final class LoginController
         return Inertia::render('auth/pages/Login');
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, AuditLog $audit): RedirectResponse
     {
         $data = $request->validate([
             'email' => ['required', 'email', 'max:150'],
@@ -49,12 +51,15 @@ final class LoginController
 
         if (! $ok) {
             RateLimiter::hit($key, 60);
+            $known = User::query()->where('email', $data['email'])->first(['id', 'company_id']);
+            $audit->record('login.failed', 'user', $known?->id, ['email' => Str::lower($data['email'])], $known?->company_id, $known?->id);
             // Mismo mensaje para correo inexistente, clave errada o usuario inactivo: no revela cuál es.
             throw ValidationException::withMessages(['email' => 'Correo o contraseña incorrectos, o el usuario está desactivado.']);
         }
 
         RateLimiter::clear($key);
         $request->session()->regenerate();
+        $audit->record('login.success', 'user', (string) $request->user()->id);
 
         return redirect()->intended(route('panel.dashboard'));
     }

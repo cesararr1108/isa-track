@@ -12,6 +12,7 @@ use Isa\Cash\Application\CloseCashRegister\CloseCashRegisterHandler;
 use Isa\Cash\Application\GetCashSummary\GetCashSummaryHandler;
 use Isa\Cash\Application\ListCashClosings\ListCashClosingsHandler;
 use Isa\Shared\Domain\Clock;
+use Isa\Shared\Infrastructure\Audit\AuditLog;
 use Isa\Shared\Infrastructure\Auth\DriverScope;
 
 final class CashController
@@ -41,7 +42,7 @@ final class CashController
     }
 
     /** POST /api/cash/closings {carrier_id, date?, cash_received, notes?} */
-    public function store(Request $request, CloseCashRegisterHandler $closeRegister): JsonResponse
+    public function store(Request $request, CloseCashRegisterHandler $closeRegister, AuditLog $audit): JsonResponse
     {
         $data = $request->validate([
             'carrier_id' => ['required', 'uuid'],
@@ -57,6 +58,10 @@ final class CashController
             $data['notes'] ?? null,
             (string) $request->user()->getAuthIdentifier(),
         ));
+
+        $audit->record('cash.closed', 'carrier', $data['carrier_id'], [
+            'date' => $closing->date()->value, 'received' => $closing->cashReceived()->amount, 'result' => $closing->result(),
+        ]);
 
         return new JsonResponse(['data' => CashClosingPresenter::closing($closing)], 201);
     }

@@ -3,8 +3,11 @@
 use App\Http\Controllers\Web\DashboardController;
 use App\Http\Controllers\Web\LiveMapController;
 use App\Http\Controllers\Web\LoginController;
+use App\Http\Controllers\Web\UserPageController;
 use Illuminate\Support\Facades\Route;
+use Isa\Cash\Infrastructure\Http\Web\CashPageController;
 use Isa\Fleet\Infrastructure\Http\Web\CarrierPageController;
+use Isa\Reports\Infrastructure\Http\Web\ReportPageController;
 use Isa\Routing\Infrastructure\Http\Web\RoutePageController;
 use Isa\Shipping\Infrastructure\Http\PublicTrackingController;
 use Isa\Shipping\Infrastructure\Http\Web\OrderPageController;
@@ -37,6 +40,16 @@ Route::middleware('security.headers:csp')->group(function () {
         Route::post('/rutas/{route}/estado', [RoutePageController::class, 'changeStatus'])->whereUuid('route')->middleware('permission:routes.drive')->name('panel.routes.status');
 
         Route::get('/mapa', LiveMapController::class)->middleware('permission:orders.view')->name('panel.live');
+
+        Route::get('/caja', [CashPageController::class, 'index'])->middleware('permission:cash.view')->name('panel.cash.index');
+        Route::post('/caja/cierres', [CashPageController::class, 'close'])->middleware('permission:cash.close')->name('panel.cash.close');
+
+        Route::get('/reportes', [ReportPageController::class, 'index'])->middleware('permission:reports.view')->name('panel.reports.index');
+        Route::get('/reportes/pedidos.csv', [ReportPageController::class, 'csv'])->middleware(['permission:reports.view', 'throttle:20,1'])->name('panel.reports.csv');
+
+        Route::get('/usuarios', [UserPageController::class, 'index'])->middleware('permission:users.manage')->name('panel.users.index');
+        Route::post('/usuarios', [UserPageController::class, 'store'])->middleware('permission:users.manage')->name('panel.users.store');
+        Route::put('/usuarios/{user}', [UserPageController::class, 'update'])->whereUuid('user')->middleware('permission:users.manage')->name('panel.users.update');
 
         Route::get('/transportadores', [CarrierPageController::class, 'index'])->middleware('permission:carriers.view')->name('panel.carriers.index');
         Route::post('/transportadores', [CarrierPageController::class, 'store'])->middleware('permission:carriers.create')->name('panel.carriers.store');

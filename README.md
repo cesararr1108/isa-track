@@ -24,6 +24,14 @@ La aplicación real tiene **panel web** en `http://localhost:8000` (o la IP de t
   devolver, ver prueba de entrega), **Rutas** (programar con control de capacidad, ver en el mapa,
   reordenar, optimizar, iniciar y completar) y **Mapa en vivo** (pedidos del día y última ubicación
   de cada mensajero, se actualiza cada 15 s).
+- **Etapa 3:** **Caja** (recaudo del día por mensajero y cierre con diferencia y nota), **Reportes**
+  (rango de fechas, mensajero y zona; gráfica por día, por mensajero, por zona, medios de pago y
+  novedades; descarga en CSV para Excel) y **Usuarios y permisos** (crear y editar, rol, permisos
+  extra o quitados, desactivar) con **bitácora de auditoría** (inicios de sesión, cambios de
+  usuarios y permisos, cierres de caja).
+
+El prototipo de demostración (`/prototipo`) ya no es necesario: todas sus secciones existen en el panel real,
+salvo la app del mensajero (PWA), que se dejó para después.
 Las secciones marcadas "Pronto" se construyen en las siguientes etapas; mientras tanto se pueden ver en `/prototipo`.
 
 **Stack (elegido por seguridad primero, luego escalabilidad):** Laravel 13 + Inertia.js + Vue 3 + TypeScript + Vite.

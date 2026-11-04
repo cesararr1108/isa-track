@@ -73,9 +73,9 @@ return [
         ['key' => 'live', 'group' => 'Operación', 'label' => 'Mapa en vivo', 'icon' => 'live', 'route' => 'panel.live', 'permission' => 'orders.view'],
         ['key' => 'carriers', 'group' => 'Flota y tarifas', 'label' => 'Transportadores', 'icon' => 'carriers', 'route' => 'panel.carriers.index', 'permission' => 'carriers.view'],
         ['key' => 'zones', 'group' => 'Flota y tarifas', 'label' => 'Zonas y tarifas', 'icon' => 'zones', 'route' => 'panel.zones.index', 'permission' => 'zones.view'],
-        ['key' => 'cash', 'group' => 'Finanzas', 'label' => 'Caja', 'icon' => 'cash', 'route' => null, 'permission' => 'cash.view'],
-        ['key' => 'reports', 'group' => 'Finanzas', 'label' => 'Reportes', 'icon' => 'reports', 'route' => null, 'permission' => 'reports.view'],
-        ['key' => 'users', 'group' => 'Administración', 'label' => 'Usuarios y permisos', 'icon' => 'users', 'route' => null, 'permission' => 'users.manage'],
+        ['key' => 'cash', 'group' => 'Finanzas', 'label' => 'Caja', 'icon' => 'cash', 'route' => 'panel.cash.index', 'permission' => 'cash.view'],
+        ['key' => 'reports', 'group' => 'Finanzas', 'label' => 'Reportes', 'icon' => 'reports', 'route' => 'panel.reports.index', 'permission' => 'reports.view'],
+        ['key' => 'users', 'group' => 'Administración', 'label' => 'Usuarios y permisos', 'icon' => 'users', 'route' => 'panel.users.index', 'permission' => 'users.manage'],
     ],
 
     /*
