@@ -89,12 +89,14 @@ final class PanelTest extends TestCase
         $company = $this->company('Tienda Uno');
         $driver = $this->user($company, Role::Driver, $this->carrier($company));
 
-        $this->actingAs($driver)->get('/')->assertOk()->assertInertia(fn (Assert $p) => $p
-            ->component('dashboard/pages/Dashboard')
+        // El mensajero no tiene resumen: va a su app del celular.
+        $this->actingAs($driver)->get('/')->assertRedirect('/mensajero');
+
+        $this->actingAs($driver)->get('/pedidos')->assertOk()->assertInertia(fn (Assert $p) => $p
+            ->component('orders/pages/OrdersIndex')
             ->where('auth.user.email', $driver->email)
             ->missing('auth.user.password')
             ->missing('auth.user.remember_token')
-            ->where('summary', null)
             ->where('company.name', 'Tienda Uno')
             ->where('navigation', fn ($nav) => ! collect($nav)->flatMap(fn ($g) => $g['items'])->pluck('key')->contains('carriers')));
 

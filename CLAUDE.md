@@ -11,7 +11,7 @@ SaaS de logística y rastreo de domicilios para empresas de Medellín (multiempr
 - **Panel web:** Inertia.js + Vue 3 + TypeScript + Vite. Mapas: Leaflet + MapLibre (empaquetados, sin CDN).
 - **Prototipo de demostración:** `docs/prototipo/index.html` (HTML suelto, datos en memoria; ya no es la app real).
 - **Colores corporativos:** azul profundo `#0B1F3A` (menú, encabezados), verde menta `#00C896` (botones, confirmaciones, "en camino"), ámbar `#FFB800` (alertas, tarifas, puntos de interés). Tokens en `resources/js/shared/styles/tokens.css`.
-- **Documentación:** `README.md` (instalación y recetas), `docs/mapa-funciones.pdf` (mapa visual de funciones con capturas, para explicar el sistema), `docs/API.md` (manual de la API con ejemplos reales; PDF en `docs/manual-api.pdf`), `docs/guia-panel-frontend.pdf` (cómo funciona Vue/Vite/Inertia).
+- **Documentación:** `README.md` (instalación y recetas), `docs/mapa-funciones.pdf` (mapa visual de funciones con capturas, para explicar el sistema), `docs/app-mensajero.md` (app del mensajero: PWA, instalación y paso a Capacitor), `docs/API.md` (manual de la API con ejemplos reales; PDF en `docs/manual-api.pdf`), `docs/guia-panel-frontend.pdf` (cómo funciona Vue/Vite/Inertia).
 
 ## 2. Comandos
 
@@ -52,10 +52,11 @@ Fuera de `src/`: `app/Models/User.php` (usuario con rol, permisos extra/quitados
 
 **Dos puertas, mismos casos de uso:**
 - `routes/web.php` → panel Inertia (sesión + CSRF). Controladores en `src/*/Infrastructure/Http/Web/*PageController.php`, responden `Inertia::render('<modulo>/pages/<Pagina>', props)` o `back()->with('success', ...)`.
-- `routes/api.php` → API JSON `/api/*` (token Sanctum) para la futura app del mensajero e integraciones.
-- Validación de formato compartida en FormRequests: `CreateOrderRequest`, `CarrierRequest`, `CarrierPhotoRequest`, `ZoneRequest`.
+- `routes/web.php` → también la **app del mensajero** (PWA) en `/mensajero` (`DriverAppController`, rutas `driver.*`): misma sesión y casos de uso. El mensajero entra ahí al iniciar sesión.
+- `routes/api.php` → API JSON `/api/*` (token Sanctum) para integraciones y una futura app nativa.
+- Validación de formato compartida en FormRequests: `CreateOrderRequest`, `DeliverOrderRequest`, `CarrierRequest`, `CarrierPhotoRequest`, `ZoneRequest`.
 
-**Frontend** (`resources/js/`): `app.ts` resuelve `modules/<modulo>/pages/<Pagina>.vue`. `modules/{auth,dashboard,orders,routes,live,fleet,zones,cash,reports,users}`. Compartido en `shared/` (`layouts/AppLayout.vue`, `map/createMap.ts` + `map/useMap.ts`, `ui/`, `lib/format.ts`, `lib/permissions.ts`). Tipos de props en `types/index.ts`. `tracking.ts` = mapa de la página pública `/rastreo/{codigo}` (Blade `resources/views/tracking/show.blade.php`).
+**Frontend** (`resources/js/`): `app.ts` resuelve `modules/<modulo>/pages/<Pagina>.vue`. `modules/{auth,dashboard,orders,routes,live,fleet,zones,cash,reports,users,driver}`. `modules/driver/device/` concentra lo que toca el celular (GPS, cámara, sesión, instalación): ahí entra Capacitor. Compartido en `shared/` (`layouts/AppLayout.vue`, `map/createMap.ts` + `map/useMap.ts`, `ui/`, `lib/format.ts`, `lib/permissions.ts`). Tipos de props en `types/index.ts`. `tracking.ts` = mapa de la página pública `/rastreo/{codigo}` (Blade `resources/views/tracking/show.blade.php`).
 
 **Configuración del negocio:** `config/isa.php` (roles y permisos, catálogo de permisos, menú `navigation`, transiciones, estados y colores, motivos de novedad, prueba de entrega, medios de pago, caja, marca, mapas, bodega, flota).
 
@@ -137,6 +138,7 @@ Fuera de `src/`: `app/Models/User.php` (usuario con rol, permisos extra/quitados
 - **"Vite manifest not found"** → falta `npm ci && npm run build` en el servidor. Si existe `public/hot` en producción, borrarlo.
 - **MapLibre ≤ 6.4 tiene XSS** → usar ≥ 6.5 (hoy 6.16, solo ESM, empaquetado con Vite). El prototipo HTML solo usa mapas en imágenes (Esri/OSM).
 - **CARTO pide llave** y OSM rechaza `file://` → mapa por defecto: OpenFreeMap "Liberty" (vectorial, sin llave) con respaldo OSM → Esri (`shared/map/createMap.ts`). MapTiler con `MAPTILER_KEY`.
+- **PWA tras login con Inertia**: una visita interna no recarga el `<head>` de Blade y el celular no ve el manifiesto → al mensajero se le redirige con `Inertia::location()` (carga completa). El manifiesto solo se incluye en `/mensajero*`.
 - En Blade, `@json()` con arreglos complejos rompe el parser → armar la variable en `@php` y luego `@json($var)`.
 
 ## 8. Despliegue (servidor Ubuntu, `/var/www/isa-track`, Nginx + PHP-FPM, Node 22)
@@ -154,4 +156,4 @@ Producción: `APP_ENV=production`, `APP_DEBUG=false`. Con HTTPS: `SESSION_SECURE
 
 ## 10. Pendiente
 
-App del mensajero en el celular (PWA o nativa: entrega con foto/firma y envío de GPS a `/api/me/location`), WhatsApp real (`WhatsAppCustomerNotifier` + colas Redis), tiempo real con Reverb, 2FA para administradores, PostGIS para consultas por zona, importación desde Excel/Shopify reutilizando `CreateOrderHandler`, etiquetas QR por paquete.
+App del mensajero: entregas sin señal (cola y reenvío) y GPS en segundo plano envolviendo la PWA con Capacitor (ver `docs/app-mensajero.md`), WhatsApp real (`WhatsAppCustomerNotifier` + colas Redis), tiempo real con Reverb, 2FA para administradores, PostGIS para consultas por zona, importación desde Excel/Shopify reutilizando `CreateOrderHandler`, etiquetas QR por paquete.

@@ -171,3 +171,19 @@ export interface RoutableOrder {
     packages: number;
     carrier_id: string | null;
 }
+
+/** Recaudo del día de un mensajero (lo que lleva cobrado y si ya cerró caja). */
+export interface CashSummary {
+    carrier_id: string;
+    date: string;
+    collected: { orders_count: number; totals_by_method: Record<string, number>; total: number; expected_cash: number };
+    closing: null | { result: 'balanced' | 'short' | 'over'; cash_received: number; difference: number };
+}
+
+/** Qué exige la prueba de entrega (config isa.delivery_proof.require). */
+export interface ProofRequired {
+    receiver_name: boolean;
+    photo: boolean;
+    signature: boolean;
+    location: boolean;
+}

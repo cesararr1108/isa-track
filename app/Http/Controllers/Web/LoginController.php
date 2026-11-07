@@ -14,6 +14,8 @@ use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Isa\Shared\Infrastructure\Audit\AuditLog;
+use Isa\Shared\Infrastructure\Auth\Role;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 /**
  * Inicio de sesión del panel con sesión de servidor (cookie httpOnly + CSRF).
@@ -28,7 +30,7 @@ final class LoginController
         return Inertia::render('auth/pages/Login');
     }
 
-    public function store(Request $request, AuditLog $audit): RedirectResponse
+    public function store(Request $request, AuditLog $audit): SymfonyResponse
     {
         $data = $request->validate([
             'email' => ['required', 'email', 'max:150'],
@@ -60,6 +62,12 @@ final class LoginController
         RateLimiter::clear($key);
         $request->session()->regenerate();
         $audit->record('login.success', 'user', (string) $request->user()->id);
+
+        if ($request->user()->role === Role::Driver) {
+            // El mensajero va a su app del celular con una carga completa de la página,
+            // para que el navegador lea el manifiesto y ofrezca instalarla.
+            return Inertia::location(redirect()->intended(route('driver.home'))->getTargetUrl());
+        }
 
         return redirect()->intended(route('panel.dashboard'));
     }

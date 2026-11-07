@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Web\DashboardController;
+use App\Http\Controllers\Web\DriverAppController;
 use App\Http\Controllers\Web\LiveMapController;
 use App\Http\Controllers\Web\LoginController;
 use App\Http\Controllers\Web\UserPageController;
@@ -56,6 +57,15 @@ Route::middleware('security.headers:csp')->group(function () {
         Route::match(['put', 'post'], '/transportadores/{carrier}', [CarrierPageController::class, 'update'])->whereUuid('carrier')->middleware('permission:carriers.update')->name('panel.carriers.update');
         Route::post('/transportadores/{carrier}/estado', [CarrierPageController::class, 'setActive'])->whereUuid('carrier')->middleware('permission:carriers.update')->name('panel.carriers.active');
         Route::get('/transportadores/{carrier}/foto', [CarrierPageController::class, 'photo'])->whereUuid('carrier')->middleware('permission:carriers.view')->name('panel.carriers.photo');
+
+        // App del mensajero (PWA). Mismos permisos que la API del conductor.
+        Route::middleware('permission:routes.drive')->prefix('mensajero')->name('driver.')->group(function () {
+            Route::get('/', [DriverAppController::class, 'home'])->name('home');
+            Route::get('/pedidos/{order}', [DriverAppController::class, 'order'])->whereUuid('order')->middleware('permission:orders.view')->name('order');
+            Route::post('/pedidos/{order}/estado', [DriverAppController::class, 'changeStatus'])->whereUuid('order')->middleware('permission:orders.change_status')->name('order.status');
+            Route::post('/pedidos/{order}/entregar', [DriverAppController::class, 'deliver'])->whereUuid('order')->middleware(['permission:orders.change_status', 'throttle:30,1'])->name('order.deliver');
+            Route::post('/ubicacion', [DriverAppController::class, 'location'])->middleware('throttle:30,1')->name('location');
+        });
 
         Route::get('/zonas', [ZonePageController::class, 'index'])->middleware('permission:zones.view')->name('panel.zones.index');
         Route::get('/zonas/cotizar', [ZonePageController::class, 'quote'])->middleware('permission:zones.view')->name('panel.zones.quote');

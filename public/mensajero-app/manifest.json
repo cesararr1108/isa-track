@@ -1,0 +1,18 @@
+{
+    "name": "ISA Track · Mensajero",
+    "short_name": "ISA Mensajero",
+    "description": "Tu ruta del día, entregas con foto y firma, y cobros.",
+    "lang": "es-CO",
+    "id": "/mensajero",
+    "start_url": "/mensajero",
+    "scope": "/mensajero",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#0B1F3A",
+    "theme_color": "#0B1F3A",
+    "icons": [
+        { "src": "/mensajero-app/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+        { "src": "/mensajero-app/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+        { "src": "/mensajero-app/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    ]
+}

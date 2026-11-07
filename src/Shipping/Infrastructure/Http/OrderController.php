@@ -6,7 +6,6 @@ namespace Isa\Shipping\Infrastructure\Http;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Isa\Shared\Domain\ValueObject\CarrierId;
@@ -16,16 +15,13 @@ use Isa\Shipping\Application\AssignCarrier\AssignCarrierHandler;
 use Isa\Shipping\Application\ChangeOrderStatus\ChangeOrderStatusCommand;
 use Isa\Shipping\Application\ChangeOrderStatus\ChangeOrderStatusHandler;
 use Isa\Shipping\Application\CreateOrder\CreateOrderHandler;
-use Isa\Shipping\Application\DeliverOrder\DeliverOrderCommand;
 use Isa\Shipping\Application\DeliverOrder\DeliverOrderHandler;
 use Isa\Shipping\Application\GetOrder\GetOrderHandler;
 use Isa\Shipping\Application\ListOrders\ListOrdersHandler;
 use Isa\Shipping\Application\OrderPresenter;
-use Isa\Shipping\Application\Port\EvidenceFile;
 use Isa\Shipping\Domain\Exception\OrderNotFound;
 use Isa\Shipping\Domain\IncidentReason;
 use Isa\Shipping\Domain\OrderStatus;
-use Isa\Shipping\Domain\PaymentMethod;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -117,42 +113,9 @@ final class OrderController
      * receiver_name, receiver_document, photo (imagen), signature (PNG del canvas),
      * latitude, longitude, note, payments[0][method], payments[0][amount], payments[0][reference]
      */
-    public function deliver(Request $request, string $order, DeliverOrderHandler $deliverOrder): JsonResponse
+    public function deliver(DeliverOrderRequest $request, string $order, DeliverOrderHandler $deliverOrder): JsonResponse
     {
-        $maxKb = (int) config('isa.delivery_proof.max_file_kb');
-        $data = $request->validate([
-            'receiver_name' => ['nullable', 'string', 'max:150'],
-            'receiver_document' => ['nullable', 'string', 'max:30'],
-            'photo' => ['nullable', 'image', "max:$maxKb"],
-            'signature' => ['nullable', 'image', "max:$maxKb"],
-            'latitude' => ['nullable', 'numeric', 'between:-90,90', 'required_with:longitude'],
-            'longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
-            'note' => ['nullable', 'string', 'max:500'],
-            'payments' => ['nullable', 'array', 'max:5'],
-            'payments.*.method' => ['required', Rule::enum(PaymentMethod::class)],
-            'payments.*.amount' => ['required', 'integer', 'min:1'],
-            'payments.*.reference' => ['nullable', 'string', 'max:60'],
-        ]);
-
-        $updated = $deliverOrder(new DeliverOrderCommand(
-            orderId: $order,
-            receiverName: $data['receiver_name'] ?? null,
-            receiverDocument: $data['receiver_document'] ?? null,
-            photo: $this->evidenceFile($request->file('photo')),
-            signature: $this->evidenceFile($request->file('signature')),
-            latitude: isset($data['latitude']) ? (float) $data['latitude'] : null,
-            longitude: isset($data['longitude']) ? (float) $data['longitude'] : null,
-            payments: array_map(fn (array $p) => [
-                'method' => $p['method'],
-                'amount' => (int) $p['amount'],
-                'reference' => $p['reference'] ?? null,
-            ], $data['payments'] ?? []),
-            note: $data['note'] ?? null,
-            deliveredBy: (string) $request->user()->getAuthIdentifier(),
-            actorCarrierId: $this->driverCarrierId($request),
-        ));
-
-        return new JsonResponse(['data' => OrderPresenter::toArray($updated)]);
+        return new JsonResponse(['data' => OrderPresenter::toArray($deliverOrder($request->toCommand($order)))]);
     }
 
     /** Descarga la foto o la firma de la entrega (solo usuarios con acceso al pedido). */
@@ -174,11 +137,6 @@ final class OrderController
         abort_if($path === null, 404);
 
         return Storage::disk(config('isa.delivery_proof.disk'))->response($path);
-    }
-
-    private function evidenceFile(?UploadedFile $file): ?EvidenceFile
-    {
-        return $file === null ? null : new EvidenceFile($file->getRealPath(), $file->guessExtension() ?? 'bin');
     }
 
     private function driverCarrierId(Request $request): ?string
