@@ -11,7 +11,7 @@ SaaS de logística y rastreo de domicilios para empresas de Medellín (multiempr
 - **Panel web:** Inertia.js + Vue 3 + TypeScript + Vite. Mapas: Leaflet + MapLibre (empaquetados, sin CDN).
 - **Prototipo de demostración:** `docs/prototipo/index.html` (HTML suelto, datos en memoria; ya no es la app real).
 - **Colores corporativos:** azul profundo `#0B1F3A` (menú, encabezados), verde menta `#00C896` (botones, confirmaciones, "en camino"), ámbar `#FFB800` (alertas, tarifas, puntos de interés). Tokens en `resources/js/shared/styles/tokens.css`.
-- **Documentación:** `README.md` (instalación y recetas), `docs/API.md` (manual de la API con ejemplos reales; PDF en `docs/manual-api.pdf`), `docs/guia-panel-frontend.pdf` (cómo funciona Vue/Vite/Inertia).
+- **Documentación:** `README.md` (instalación y recetas), `docs/mapa-funciones.pdf` (mapa visual de funciones con capturas, para explicar el sistema), `docs/API.md` (manual de la API con ejemplos reales; PDF en `docs/manual-api.pdf`), `docs/guia-panel-frontend.pdf` (cómo funciona Vue/Vite/Inertia).
 
 ## 2. Comandos
 
